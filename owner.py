@@ -1,29 +1,18 @@
-from telegram import (
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
-
 import traceback
 
 from config import CHANNEL_ID
-
 from database import (
-    selected_conversations,
     add_user_tag,
-    remove_user_tag,
     deactivate_subscription,
+    remove_user_tag,
+    selected_conversations,
 )
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 async def owner_start(update, context):
 
     keyboard = [
-        [
-            InlineKeyboardButton(
-                "🏷 Управление тегами",
-                callback_data="owner_tags",
-            )
-        ],
         [
             InlineKeyboardButton(
                 "📨 Активные разговоры",
@@ -58,11 +47,8 @@ async def owner_start(update, context):
 
     await update.message.reply_text(
         "Панель управления",
-        reply_markup=InlineKeyboardMarkup(
-            keyboard
-        ),
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
-
 
 
 async def owner_button(
@@ -74,7 +60,6 @@ async def owner_button(
     query = update.callback_query
 
     data = query.data
-
 
     if data == "owner_conversations":
 
@@ -96,7 +81,6 @@ async def owner_button(
                 ]
             )
 
-
         if not buttons:
 
             buttons.append(
@@ -108,24 +92,16 @@ async def owner_button(
                 ]
             )
 
-
         await query.message.reply_text(
             "Активные разговоры:",
-            reply_markup=InlineKeyboardMarkup(
-                buttons
-            ),
+            reply_markup=InlineKeyboardMarkup(buttons),
         )
 
         return True
 
-
-
     if data == "owner_add_user":
 
-        context.user_data[
-            "manual_add_user"
-        ] = True
-
+        context.user_data["manual_add_user"] = True
 
         await query.message.reply_text(
             "Пришлите ID пользователя которого нужно добавить:"
@@ -133,14 +109,9 @@ async def owner_button(
 
         return True
 
-
-
     if data == "owner_remove_user":
 
-        context.user_data[
-            "manual_remove_user"
-        ] = True
-
+        context.user_data["manual_remove_user"] = True
 
         await query.message.reply_text(
             "Пришлите ID пользователя которого нужно удалить:"
@@ -148,18 +119,11 @@ async def owner_button(
 
         return True
 
-
-
     if data == "owner_broadcast":
 
-        context.user_data[
-            "broadcast_mode"
-        ] = True
+        context.user_data["broadcast_mode"] = True
 
-
-        await query.message.reply_text(
-            "Напишите сообщение всем пользователям:"
-        )
+        await query.message.reply_text("Напишите сообщение всем пользователям:")
 
         return True
 
@@ -170,9 +134,7 @@ async def owner_button(
         tags = get_all_tags()
 
         if not tags:
-            await query.message.reply_text(
-                "❌ Тегов пока нет."
-            )
+            await query.message.reply_text("❌ Тегов пока нет.")
 
             return True
 
@@ -190,60 +152,42 @@ async def owner_button(
 
         await query.message.reply_text(
             "Выберите тег для рассылки:",
-            reply_markup=InlineKeyboardMarkup(
-                keyboard
-            ),
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         return True
 
-
-
     if data.startswith("open_"):
 
-        user_id = int(
-            data.replace(
-                "open_",
-                ""
-            )
-        )
+        user_id = int(data.replace("open_", ""))
 
-
-        selected_conversations[
-            query.from_user.id
-        ] = user_id
-
+        selected_conversations[query.from_user.id] = user_id
 
         keyboard = [
-
             [
                 InlineKeyboardButton(
                     "📋 Теги",
                     callback_data=f"tag_list_{user_id}",
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     "🏷 Добавить тег",
                     callback_data=f"tag_add_{user_id}",
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     "❌ Удалить тег",
                     callback_data=f"tag_remove_{user_id}",
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     "➕ Добавить в группу",
                     callback_data=f"add_{user_id}",
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     "➖ Удалить из группы",
@@ -252,28 +196,16 @@ async def owner_button(
             ],
         ]
 
-
         await query.message.reply_text(
             f"Пользователь: {user_id}",
-            reply_markup=InlineKeyboardMarkup(
-                keyboard
-            ),
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
-
 
         return True
 
-
-
     if data.startswith("add_"):
 
-        user_id = int(
-            data.replace(
-                "add_",
-                ""
-            )
-        )
-
+        user_id = int(data.replace("add_", ""))
 
         try:
 
@@ -282,41 +214,24 @@ async def owner_button(
                 member_limit=1,
             )
 
-
             await context.bot.send_message(
                 user_id,
-                "Ссылка для входа:\n\n"
-                f"{invite.invite_link}",
+                "Ссылка для входа:\n\n" f"{invite.invite_link}",
             )
 
-
-            await query.message.reply_text(
-                "✅ Ссылка отправлена."
-            )
-
+            await query.message.reply_text("✅ Ссылка отправлена.")
 
         except Exception as e:
 
             traceback.print_exc()
 
-            await query.message.reply_text(
-                f"Ошибка:\n{e}"
-            )
-
+            await query.message.reply_text(f"Ошибка:\n{e}")
 
         return True
 
-
-
     if data.startswith("remove_"):
 
-        user_id = int(
-            data.replace(
-                "remove_",
-                ""
-            )
-        )
-
+        user_id = int(data.replace("remove_", ""))
 
         try:
 
@@ -330,23 +245,13 @@ async def owner_button(
                 user_id,
             )
 
+            deactivate_subscription(user_id)
 
-            deactivate_subscription(
-                user_id
-            )
-
-
-            await query.message.reply_text(
-                "✅ Пользователь удалён из канала."
-            )
-
+            await query.message.reply_text("✅ Пользователь удалён из канала.")
 
         except Exception as e:
 
-            await query.message.reply_text(
-                f"Ошибка:\n{e}"
-            )
-
+            await query.message.reply_text(f"Ошибка:\n{e}")
 
         return True
 
@@ -354,12 +259,7 @@ async def owner_button(
 
         from database import get_all_tags
 
-        user_id = int(
-            data.replace(
-                "tag_add_",
-                ""
-            )
-        )
+        user_id = int(data.replace("tag_add_", ""))
 
         tags = get_all_tags()
 
@@ -386,9 +286,7 @@ async def owner_button(
 
         await query.message.reply_text(
             "Выберите тег:",
-            reply_markup=InlineKeyboardMarkup(
-                keyboard
-            ),
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         return True
@@ -397,28 +295,13 @@ async def owner_button(
 
         from database import get_user_tags
 
+        user_id = int(data.replace("tag_list_", ""))
 
-        user_id = int(
-            data.replace(
-                "tag_list_",
-                ""
-            )
-        )
-
-
-        tags = get_user_tags(
-            user_id
-        )
-
+        tags = get_user_tags(user_id)
 
         await query.message.reply_text(
-            "Теги:\n" +
-            "\n".join(tags)
-            if tags
-            else
-            "Нет тегов"
+            "Теги:\n" + "\n".join(tags) if tags else "Нет тегов"
         )
-
 
         return True
 
@@ -426,21 +309,12 @@ async def owner_button(
 
         from database import get_user_tags
 
-        user_id = int(
-            data.replace(
-                "tag_remove_",
-                ""
-            )
-        )
+        user_id = int(data.replace("tag_remove_", ""))
 
-        tags = get_user_tags(
-            user_id
-        )
+        tags = get_user_tags(user_id)
 
         if not tags:
-            await query.message.reply_text(
-                "У пользователя нет тегов."
-            )
+            await query.message.reply_text("У пользователя нет тегов.")
 
             return True
 
@@ -451,16 +325,14 @@ async def owner_button(
                 [
                     InlineKeyboardButton(
                         f"❌ {tag}",
-                        callback_data=f"delete_tag_{user_id}_{tag}",
+                        callback_data=f"delete_tag|{user_id}_{tag}",
                     )
                 ]
             )
 
         await query.message.reply_text(
             "Выберите тег для удаления:",
-            reply_markup=InlineKeyboardMarkup(
-                keyboard
-            ),
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         return True
@@ -477,9 +349,7 @@ async def owner_button(
             tag,
         )
 
-        await query.message.reply_text(
-            f"✅ Тег #{tag} добавлен."
-        )
+        await query.message.reply_text(f"✅ Тег #{tag} добавлен.")
 
         return True
 
@@ -498,84 +368,36 @@ async def owner_button(
 
     if data.startswith("broadcast_tag_"):
 
-        tag = data.replace(
-            "broadcast_tag_",
-            ""
-        )
-
+        tag = data.replace("broadcast_tag_", "")
 
         context.user_data["broadcast_tag"] = tag
 
         context.user_data["tag_broadcast_message"] = True
 
-
         await query.message.reply_text(
             f"Введите сообщение для пользователей с тегом #{tag}:"
         )
 
-
         return True
 
-    if data.startswith("delete_tag_"):
-        data_parts = data.replace(
-            "delete_tag_",
-            "",
-        )
+    if data.startswith("delete_tag|"):
+        parts = data.split("|")
 
-        user_id, tag = data_parts.split(
-            "_",
-            1
-        )
+        user_id = int(parts[1])
+        tag = parts[2]
 
         remove_user_tag(
-            int(user_id),
+            user_id,
             tag,
         )
 
         await query.message.reply_text(
-            f"✅ Тег <b>{tag}</b> удалён.",
-            parse_mode="HTML",
-        )
-
-        return True
-
-    if data == "owner_tags":
-
-        from database import get_all_tags
-
-        tags = get_all_tags()
-
-        if not tags:
-            await query.message.reply_text(
-                "❌ Тегов нет."
-            )
-
-            return True
-
-        keyboard = []
-
-        for tag in tags:
-            keyboard.append(
-                [
-                    InlineKeyboardButton(
-                        f"🏷 {tag}",
-                        callback_data=f"tag_manage|{tag}",
-                    )
-                ]
-            )
-
-        await query.message.reply_text(
-            "Все теги:",
-            reply_markup=InlineKeyboardMarkup(
-                keyboard
-            ),
+            f"✅ Тег #{tag} удалён."
         )
 
         return True
 
     return False
-
-
 
 
 async def owner_message(
@@ -586,12 +408,8 @@ async def owner_message(
 
     text = update.message.text
 
-    if context.user_data.get(
-            "create_tag_user"
-    ):
-        user_id = context.user_data.pop(
-            "create_tag_user"
-        )
+    if context.user_data.get("create_tag_user"):
+        user_id = context.user_data.pop("create_tag_user")
 
         tag = text.lower().strip()
 
@@ -600,126 +418,67 @@ async def owner_message(
             tag,
         )
 
-        await update.message.reply_text(
-            f"✅ Новый тег #{tag} создан и добавлен."
-        )
+        await update.message.reply_text(f"✅ Новый тег #{tag} создан и добавлен.")
 
         return
 
-    if context.user_data.get(
-        "add_tag"
-    ):
+    if context.user_data.get("add_tag"):
 
-        context.user_data[
-            "add_tag"
-        ] = False
+        context.user_data["add_tag"] = False
 
+        user_id = context.user_data.pop("tag_user_id")
 
-        user_id = context.user_data.pop(
-            "tag_user_id"
-        )
+        add_user_tag(user_id, text.lower())
 
-
-        add_user_tag(
-            user_id,
-            text.lower()
-        )
-
-
-        await update.message.reply_text(
-            "✅ Тег добавлен."
-        )
-
+        await update.message.reply_text("✅ Тег добавлен.")
 
         return
 
+    if context.user_data.get("remove_tag"):
 
+        context.user_data["remove_tag"] = False
 
-    if context.user_data.get(
-        "remove_tag"
-    ):
+        user_id = context.user_data.pop("remove_tag_user_id")
 
-        context.user_data[
-            "remove_tag"
-        ] = False
+        remove_user_tag(user_id, text.lower())
 
-
-        user_id = context.user_data.pop(
-            "remove_tag_user_id"
-        )
-
-
-        remove_user_tag(
-            user_id,
-            text.lower()
-        )
-
-
-        await update.message.reply_text(
-            "✅ Тег удалён."
-        )
-
+        await update.message.reply_text("✅ Тег удалён.")
 
         return
 
+    if context.user_data.get("manual_add_user"):
 
-
-    if context.user_data.get(
-        "manual_add_user"
-    ):
-
-        context.user_data[
-            "manual_add_user"
-        ] = False
-
+        context.user_data["manual_add_user"] = False
 
         try:
 
             user_id = int(text)
-
 
             invite = await context.bot.create_chat_invite_link(
                 chat_id=CHANNEL_ID,
                 member_limit=1,
             )
 
-
             await context.bot.send_message(
                 user_id,
-                "Ссылка:\n\n"
-                f"{invite.invite_link}",
+                "Ссылка:\n\n" f"{invite.invite_link}",
             )
 
-
-            await update.message.reply_text(
-                "✅ Отправлено."
-            )
-
+            await update.message.reply_text("✅ Отправлено.")
 
         except Exception as e:
 
-            await update.message.reply_text(
-                str(e)
-            )
-
+            await update.message.reply_text(str(e))
 
         return
 
+    if context.user_data.get("manual_remove_user"):
 
-
-    if context.user_data.get(
-        "manual_remove_user"
-    ):
-
-        context.user_data[
-            "manual_remove_user"
-        ] = False
-
+        context.user_data["manual_remove_user"] = False
 
         try:
 
             user_id = int(text)
-
 
             await context.bot.ban_chat_member(
                 CHANNEL_ID,
@@ -731,46 +490,25 @@ async def owner_message(
                 user_id,
             )
 
+            deactivate_subscription(user_id)
 
-            deactivate_subscription(
-                user_id
-            )
-
-
-            await update.message.reply_text(
-                "✅ Пользователь удалён."
-            )
-
+            await update.message.reply_text("✅ Пользователь удалён.")
 
         except Exception as e:
 
-            await update.message.reply_text(
-                str(e)
-            )
-
+            await update.message.reply_text(str(e))
 
         return
 
+    if context.user_data.get("broadcast_mode"):
 
-
-    if context.user_data.get(
-        "broadcast_mode"
-    ):
-
-        context.user_data[
-            "broadcast_mode"
-        ] = False
-
+        context.user_data["broadcast_mode"] = False
 
         users = get_all_users()
 
         count = 0
 
-
-        for (
-            user_id,
-            _
-        ) in users:
+        for (user_id, _) in users:
 
             try:
 
@@ -781,35 +519,21 @@ async def owner_message(
 
                 count += 1
 
-
             except Exception:
 
                 pass
 
-
-        await update.message.reply_text(
-            f"Отправлено: {count}"
-        )
-
+        await update.message.reply_text(f"Отправлено: {count}")
 
         return
 
-
-
-    selected_user = selected_conversations.get(
-        update.effective_user.id
-    )
-
+    selected_user = selected_conversations.get(update.effective_user.id)
 
     if not selected_user:
 
-        await update.message.reply_text(
-            "Сначала выберите пользователя."
-        )
+        await update.message.reply_text("Сначала выберите пользователя.")
 
         return
-
-
 
     try:
 
@@ -818,14 +542,8 @@ async def owner_message(
             f"📢 Сообщение владельца:\n\n{text}",
         )
 
-
-        await update.message.reply_text(
-            "Сообщение отправлено."
-        )
-
+        await update.message.reply_text("Сообщение отправлено.")
 
     except Exception as e:
 
-        await update.message.reply_text(
-            str(e)
-        )
+        await update.message.reply_text(str(e))
