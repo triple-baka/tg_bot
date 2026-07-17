@@ -361,8 +361,6 @@ async def owner_button(
             )
         )
 
-        context.user_data["tag_user_id"] = user_id
-
         tags = get_all_tags()
 
         keyboard = []
@@ -372,7 +370,7 @@ async def owner_button(
                 [
                     InlineKeyboardButton(
                         f"🏷 {tag}",
-                        callback_data=f"add_existing_tag_{user_id}_{tag}",
+                        callback_data=f"add_existing_tag|{user_id}|{tag}",
                     )
                 ]
             )
@@ -381,7 +379,7 @@ async def owner_button(
             [
                 InlineKeyboardButton(
                     "➕ Создать новый тег",
-                    callback_data=f"new_tag_{user_id}",
+                    callback_data=f"new_tag|{user_id}",
                 )
             ]
         )
@@ -394,8 +392,6 @@ async def owner_button(
         )
 
         return True
-
-
 
     if data.startswith("tag_list_"):
 
@@ -467,26 +463,35 @@ async def owner_button(
             ),
         )
 
-        await query.answer(
-            "Тег удалён"
-        )
-
         return True
 
-    if data.startswith("add_existing_tag_"):
-        parts = data.split("_")
+    if data.startswith("add_existing_tag|"):
+        parts = data.split("|")
 
-        user_id = int(parts[3])
+        user_id = int(parts[1])
 
-        tag = parts[4]
+        tag = parts[2]
 
         add_user_tag(
             user_id,
             tag,
         )
 
-        await query.answer(
-            "Тег добавлен"
+        await query.message.reply_text(
+            f"✅ Тег #{tag} добавлен."
+        )
+
+        return True
+
+    if data.startswith("new_tag|"):
+        user_id = int(
+            data.split("|")[1]
+        )
+
+        context.user_data["create_tag_user"] = user_id
+
+        await query.message.reply_text(
+            "Введите название нового тега:"
         )
 
         return True
@@ -512,19 +517,58 @@ async def owner_button(
         return True
 
     if data.startswith("delete_tag_"):
-        parts = data.split("_")
+        data_parts = data.replace(
+            "delete_tag_",
+            "",
+        )
 
-        user_id = int(parts[2])
-
-        tag = parts[3]
+        user_id, tag = data_parts.split(
+            "_",
+            1
+        )
 
         remove_user_tag(
-            user_id,
+            int(user_id),
             tag,
         )
 
-        await query.answer(
-            "Тег удалён"
+        await query.message.reply_text(
+            f"✅ Тег <b>{tag}</b> удалён.",
+            parse_mode="HTML",
+        )
+
+        return True
+
+    if data == "owner_tags":
+
+        from database import get_all_tags
+
+        tags = get_all_tags()
+
+        if not tags:
+            await query.message.reply_text(
+                "❌ Тегов нет."
+            )
+
+            return True
+
+        keyboard = []
+
+        for tag in tags:
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"🏷 {tag}",
+                        callback_data=f"tag_manage|{tag}",
+                    )
+                ]
+            )
+
+        await query.message.reply_text(
+            "Все теги:",
+            reply_markup=InlineKeyboardMarkup(
+                keyboard
+            ),
         )
 
         return True
@@ -542,7 +586,25 @@ async def owner_message(
 
     text = update.message.text
 
+    if context.user_data.get(
+            "create_tag_user"
+    ):
+        user_id = context.user_data.pop(
+            "create_tag_user"
+        )
 
+        tag = text.lower().strip()
+
+        add_user_tag(
+            user_id,
+            tag,
+        )
+
+        await update.message.reply_text(
+            f"✅ Новый тег #{tag} создан и добавлен."
+        )
+
+        return
 
     if context.user_data.get(
         "add_tag"
