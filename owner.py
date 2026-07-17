@@ -325,7 +325,7 @@ async def owner_button(
                 [
                     InlineKeyboardButton(
                         f"❌ {tag}",
-                        callback_data=f"delete_tag|{user_id}_{tag}",
+                        callback_data=f"delete_tag|{user_id}|{tag}",
                     )
                 ]
             )
