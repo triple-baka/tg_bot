@@ -560,6 +560,21 @@ def get_users_by_tag(tag):
             for row in rows
         ]
 
+def get_all_tags():
 
+    with get_db() as db:
+
+        rows = db.execute(
+            """
+            SELECT DISTINCT tag
+            FROM user_tags
+            ORDER BY tag
+            """
+        ).fetchall()
+
+        return [
+            row["tag"]
+            for row in rows
+        ]
 
 selected_conversations = {}

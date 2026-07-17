@@ -163,17 +163,36 @@ async def owner_button(
 
         return True
 
-
-
     if data == "owner_tag_broadcast":
 
-        context.user_data[
-            "tag_broadcast"
-        ] = True
+        from database import get_all_tags
 
+        tags = get_all_tags()
+
+        if not tags:
+            await query.message.reply_text(
+                "❌ Тегов пока нет."
+            )
+
+            return True
+
+        keyboard = []
+
+        for tag in tags:
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"🏷 {tag}",
+                        callback_data=f"broadcast_tag_{tag}",
+                    )
+                ]
+            )
 
         await query.message.reply_text(
-            "Введите тег:"
+            "Выберите тег для рассылки:",
+            reply_markup=InlineKeyboardMarkup(
+                keyboard
+            ),
         )
 
         return True
@@ -420,6 +439,26 @@ async def owner_button(
 
         return True
 
+
+    if data.startswith("broadcast_tag_"):
+
+        tag = data.replace(
+            "broadcast_tag_",
+            ""
+        )
+
+
+        context.user_data["broadcast_tag"] = tag
+
+        context.user_data["tag_broadcast_message"] = True
+
+
+        await query.message.reply_text(
+            f"Введите сообщение для пользователей с тегом #{tag}:"
+        )
+
+
+        return True
 
 
     return False
