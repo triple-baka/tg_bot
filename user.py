@@ -620,54 +620,49 @@ async def user_message(
     update,
     context,
 ):
-
-
     if not context.user_data.get(
         "chat_mode"
     ):
-
         return
 
-
-
     user = update.effective_user
-
-
     text = update.message.text
 
-
+    sent = False
 
     for OWNER_ID in OWNER_IDS:
 
-
         try:
 
-
             await context.bot.send_message(
-
                 OWNER_ID,
-
                 f"Новое сообщение\n\n"
                 f"Пользователь: {user.first_name}\n"
                 f"ID: {user.id}\n\n"
                 f"{text}",
-
             )
 
-
-            await update.message.reply_text(
-
-                "Сообщение отправлено."
-
-            )
-
-
+            sent = True
 
         except Exception as e:
 
-
-            await update.message.reply_text(
-
-                f"Error: {e}"
-
+            print(
+                f"Ошибка отправки владельцу {OWNER_ID}:",
+                e
             )
+
+
+    if sent:
+
+        await update.message.reply_text(
+            "Сообщение отправлено."
+        )
+
+    else:
+
+        await update.message.reply_text(
+            "❌ Не удалось отправить сообщение владельцу."
+        )
+
+    # отключаем режим после отправки
+    context.user_data["chat_mode"] = False
