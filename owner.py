@@ -467,6 +467,10 @@ async def owner_button(
             ),
         )
 
+        await query.answer(
+            "Тег удалён"
+        )
+
         return True
 
     if data.startswith("add_existing_tag_"):
