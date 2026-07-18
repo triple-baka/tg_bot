@@ -456,7 +456,7 @@ async def owner_message(
                 "Ссылка:\n\n" f"{invite.invite_link}",
             )
 
-            await update.message.reply_text("✅ Отправлено.")
+            await update.message.reply_text("✅ Ссылка отправлена.")
 
         except Exception as e:
 
@@ -517,7 +517,7 @@ async def owner_message(
                 pass
 
         await update.message.reply_text(
-            f"✅ Рассылка по тегу #{tag} завершена.\nОтправлено: {count}"
+            f"✅ Рассылка по тегу #{tag} завершена.\nОтправлено: {count} пользователям"
         )
 
         return
@@ -545,7 +545,7 @@ async def owner_message(
 
                 pass
 
-        await update.message.reply_text(f"Отправлено: {count}")
+        await update.message.reply_text(f"Отправлено: {count} пользователям")
 
         return
 

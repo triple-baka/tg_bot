@@ -310,7 +310,7 @@ def get_subscription_status():
 
 
         reminder_time = (
-            now + timedelta(days=2)
+            now + timedelta(minutes=2)
         )
 
 
