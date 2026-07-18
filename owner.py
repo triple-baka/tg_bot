@@ -6,6 +6,9 @@ from database import (
     deactivate_subscription,
     remove_user_tag,
     selected_conversations,
+    get_all_tags,
+    get_user_tags,
+    get_users_by_tag
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -128,8 +131,6 @@ async def owner_button(
         return True
 
     if data == "owner_tag_broadcast":
-
-        from database import get_all_tags
 
         tags = get_all_tags()
 
@@ -257,8 +258,6 @@ async def owner_button(
 
     if data.startswith("tag_add_"):
 
-        from database import get_all_tags
-
         user_id = int(data.replace("tag_add_", ""))
 
         tags = get_all_tags()
@@ -293,8 +292,6 @@ async def owner_button(
 
     if data.startswith("tag_list_"):
 
-        from database import get_user_tags
-
         user_id = int(data.replace("tag_list_", ""))
 
         tags = get_user_tags(user_id)
@@ -306,8 +303,6 @@ async def owner_button(
         return True
 
     if data.startswith("tag_remove_"):
-
-        from database import get_user_tags
 
         user_id = int(data.replace("tag_remove_", ""))
 
@@ -494,6 +489,36 @@ async def owner_message(
         except Exception as e:
 
             await update.message.reply_text(str(e))
+
+        return
+
+    if context.user_data.get("tag_broadcast_message"):
+
+        context.user_data["tag_broadcast_message"] = False
+
+        tag = context.user_data.pop("broadcast_tag")
+
+        users = get_users_by_tag(tag)
+
+        count = 0
+
+        for (user_id,) in users:
+
+            try:
+
+                await context.bot.send_message(
+                    user_id,
+                    f"📢 Сообщение владельца:\n\n{text}",
+                )
+
+                count += 1
+
+            except Exception:
+                pass
+
+        await update.message.reply_text(
+            f"✅ Рассылка по тегу #{tag} завершена.\nОтправлено: {count}"
+        )
 
         return
 

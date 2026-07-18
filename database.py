@@ -577,36 +577,4 @@ def get_all_tags():
             for row in rows
         ]
 
-def create_tag(tag):
-
-    with get_db() as db:
-
-        db.execute(
-            """
-            INSERT OR IGNORE INTO tags(tag)
-            VALUES(?)
-            """,
-            (
-                tag,
-            ),
-        )
-
-        db.commit()
-
-def delete_tag(tag):
-
-    with get_db() as db:
-
-        db.execute(
-            """
-            DELETE FROM user_tags
-            WHERE tag = ?
-            """,
-            (
-                tag,
-            ),
-        )
-
-        db.commit()
-
 selected_conversations = {}
