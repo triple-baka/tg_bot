@@ -72,7 +72,9 @@ async def stripe_webhook(request: Request):
 
             subscription = stripe.Subscription.retrieve(session["subscription"])
             print(subscription)
-            expires = datetime.fromtimestamp(subscription.current_period_end)
+            expires = datetime.fromtimestamp(
+                subscription["items"]["data"][0]["current_period_end"]
+            )
 
             subscription_id = session["subscription"]
 
@@ -118,15 +120,18 @@ async def stripe_webhook(request: Request):
 
         invoice = event["data"]["object"]
 
-        if invoice.get("billing_reason") != "subscription_cycle":
+        billing_reason = invoice["billing_reason"] if "billing_reason" in invoice else None
 
+        if billing_reason != "subscription_cycle":
             return {"received": True}
 
         subscription = stripe.Subscription.retrieve(invoice["subscription"])
 
         telegram_user_id = int(subscription.metadata["telegram_user_id"])
 
-        expires = datetime.fromtimestamp(subscription.current_period_end)
+        expires = datetime.fromtimestamp(
+            subscription["items"]["data"][0]["current_period_end"]
+        )
 
         activate_subscription(
             telegram_user_id,
@@ -199,7 +204,9 @@ async def stripe_webhook(request: Request):
 
             telegram_user_id = int(subscription.metadata["telegram_user_id"])
 
-            expires = datetime.fromtimestamp(subscription.current_period_end)
+            expires = datetime.fromtimestamp(
+                subscription["items"]["data"][0]["current_period_end"]
+            )
 
             await bot_instance.telegram_bot.send_message(
                 telegram_user_id,
