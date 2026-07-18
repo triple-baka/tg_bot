@@ -540,25 +540,20 @@ def get_user_tags(user_id):
 
 
 def get_users_by_tag(tag):
-
     with get_db() as db:
 
-        rows = db.execute(
+        db.execute(
             """
-            SELECT user_id
+            SELECT DISTINCT user_id
             FROM user_tags
             WHERE tag = ?
             """,
-            (
-                tag.lower(),
-            ),
-        ).fetchall()
+            (tag,),
+        )
 
-
-        return [
-            row["user_id"]
-            for row in rows
-        ]
+        users = db.fetchall()
+    
+        return users
 
 def get_all_tags():
 
