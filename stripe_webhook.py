@@ -71,7 +71,6 @@ async def stripe_webhook(request: Request):
         if session["mode"] == "subscription":
 
             subscription = stripe.Subscription.retrieve(session["subscription"])
-            print(subscription)
             expires = datetime.fromtimestamp(
                 subscription["items"]["data"][0]["current_period_end"]
             )
@@ -152,6 +151,7 @@ async def stripe_webhook(request: Request):
     elif event_type == "customer.subscription.deleted":
 
         subscription = event["data"]["object"]
+        print(subscription)
 
         telegram_user_id = int(subscription.metadata["telegram_user_id"])
 
