@@ -588,12 +588,18 @@ def get_users_by_tag(tag_id):
 
         rows = db.execute(
             """
-            SELECT
-                user_id
+            SELECT 
+                u.user_id,
+                u.username
 
-            FROM user_tags
+            FROM user_tags ut
 
-            WHERE tag_id = ?
+            JOIN users u
+                ON u.user_id = ut.user_id
+
+            WHERE ut.tag_id = ?
+
+            ORDER BY u.username
             """,
             (
                 tag_id,
@@ -601,7 +607,10 @@ def get_users_by_tag(tag_id):
         ).fetchall()
 
         return [
-            row["user_id"]
+            (
+                row["user_id"],
+                row["username"],
+            )
             for row in rows
         ]
 

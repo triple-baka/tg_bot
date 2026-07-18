@@ -363,15 +363,119 @@ async def owner_button(
         return True
 
     if data.startswith("broadcast_tag_"):
+        tag_id = int(
+            data.replace(
+                "broadcast_tag_",
+                ""
+            )
+        )
 
-        tag = data.replace("broadcast_tag_", "")
-
-        context.user_data["broadcast_tag"] = tag
+        context.user_data["broadcast_tag"] = tag_id
 
         context.user_data["tag_broadcast_message"] = True
 
+        tag = get_tag(tag_id)
+
         await query.message.reply_text(
-            f"Введите сообщение для пользователей с тегом #{tag}:"
+            f"Введите сообщение для пользователей с тегом #{tag['name']}:"
+        )
+
+        return True
+
+    if data.startswith("tag_users_"):
+
+        tag_id = int(data.replace("tag_users_", ""))
+
+        users = get_users_by_tag(tag_id)
+
+        if not users:
+            await query.message.reply_text(
+                "👥 Пользователей с этим тегом нет."
+            )
+            return True
+
+
+        keyboard = []
+
+        for user_id, username in users:
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"{username or user_id} ({user_id})",
+                        callback_data=f"open_{user_id}",
+                    )
+                ]
+            )
+
+
+        await query.message.reply_text(
+            "👥 Пользователи с тегом:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return True
+
+    if data.startswith("tag_add_user_"):
+
+        tag_id = int(data.replace("tag_add_user_", ""))
+
+        context.user_data["add_user_to_tag"] = tag_id
+
+
+        await query.message.reply_text(
+            "Введите ID пользователя которого хотите добавить:"
+        )
+
+        return True
+
+    if data.startswith("tag_remove_user_"):
+
+        tag_id = int(data.replace("tag_remove_user_", ""))
+
+        users = get_users_by_tag(tag_id)
+
+
+        if not users:
+
+            await query.message.reply_text(
+                "Нет пользователей с этим тегом."
+            )
+
+            return True
+
+
+        keyboard = []
+
+        for user_id, username in users:
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"❌ {username} ({user_id})",
+                        callback_data=f"remove_tag_user_{tag_id}_{user_id}",
+                    )
+                ]
+            )
+
+
+        await query.message.reply_text(
+            "Выберите пользователя:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return True
+
+    if data.startswith("remove_tag_user_"):
+
+        _, _, _, tag_id, user_id = data.split("_")
+
+        remove_user_tag(
+            user_id,
+            tag_id,
+        )
+
+
+        await query.message.reply_text(
+            "✅ Пользователь убран из тега."
         )
 
         return True
@@ -501,6 +605,27 @@ async def owner_message(
 ):
 
     text = update.message.text
+
+    if context.user_data.get("add_user_to_tag"):
+
+        tag_id = context.user_data.pop(
+            "add_user_to_tag"
+        )
+
+        user_id = int(text)
+
+
+        add_user_tag(
+            user_id,
+            tag_id,
+        )
+
+
+        await update.message.reply_text(
+            "✅ Пользователь добавлен в тег."
+        )
+
+        return
 
     if context.user_data.get("create_tag"):
 
