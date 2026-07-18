@@ -45,9 +45,9 @@ async def stripe_webhook(request: Request):
 
         telegram_user_id = int(session["client_reference_id"])
 
-        metadata = getattr(session, "metadata", {}) or {}
+        metadata = session["metadata"]
 
-        tariff = metadata.get("tariff")
+        tariff = metadata["tariff"] if "tariff" in metadata else None
 
         #
         # fallback для payment
