@@ -325,7 +325,7 @@ async def owner_button(
                 [
                     InlineKeyboardButton(
                         f"❌ {tag}",
-                        callback_data=f"delete_tag|{user_id}_{tag}",
+                        callback_data=f"delete_tag|{user_id}|{tag}",
                     )
                 ]
             )
@@ -386,10 +386,7 @@ async def owner_button(
         user_id = int(parts[1])
         tag = parts[2]
 
-        remove_user_tag(
-            user_id,
-            tag,
-        )
+        remove_user_tag(user_id, tag)
 
         await query.message.reply_text(
             f"✅ Тег #{tag} удалён."
