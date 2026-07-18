@@ -542,17 +542,15 @@ def get_user_tags(user_id):
 def get_users_by_tag(tag):
     with get_db() as db:
 
-        db.execute(
+        users = db.execute(
             """
             SELECT DISTINCT user_id
             FROM user_tags
             WHERE tag = ?
             """,
             (tag,),
-        )
+        ).fetchall()
 
-        users = db.fetchall()
-    
         return users
 
 def get_all_tags():
