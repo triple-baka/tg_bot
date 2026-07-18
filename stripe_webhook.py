@@ -71,7 +71,7 @@ async def stripe_webhook(request: Request):
         if session["mode"] == "subscription":
 
             subscription = stripe.Subscription.retrieve(session["subscription"])
-
+            print(subscription)
             expires = datetime.fromtimestamp(subscription.current_period_end)
 
             subscription_id = session["subscription"]
