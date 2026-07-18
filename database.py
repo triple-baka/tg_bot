@@ -44,40 +44,25 @@ def init_db():
             """
         )
 
-        db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS tags(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE
-            )
-            """
-        )
 
         db.execute(
             """
             CREATE TABLE IF NOT EXISTS user_tags(
-                user_id INTEGER NOT NULL,
-                tag_id INTEGER NOT NULL,
-
-                PRIMARY KEY(user_id, tag_id),
-
-                FOREIGN KEY(user_id)
-                    REFERENCES users(user_id)
-                    ON DELETE CASCADE,
-
-                FOREIGN KEY(tag_id)
-                    REFERENCES tags(id)
-                    ON DELETE CASCADE
+                user_id INTEGER,
+                tag TEXT,
+                UNIQUE(user_id, tag)
             )
             """
         )
 
+
         db.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_user_tags_tag
-            ON user_tags(tag_id)
+            ON user_tags(tag)
             """
         )
+
 
         db.commit()
 
@@ -486,68 +471,49 @@ def mark_trial_used(user_id):
 
         db.commit()
 
-def add_tag(name):
+
+
+def add_user_tag(user_id, tag):
 
     with get_db() as db:
 
         db.execute(
             """
-            INSERT OR IGNORE INTO tags(name)
-            VALUES(?)
-            """,
+            INSERT OR IGNORE INTO user_tags
             (
-                name.lower(),
-            ),
-        )
-
-        db.commit()
-
-def add_user_tag(
-    user_id,
-    tag_id,
-):
-
-    with get_db() as db:
-
-        db.execute(
-            """
-            INSERT OR IGNORE INTO user_tags(
                 user_id,
-                tag_id
+                tag
             )
-            VALUES(?, ?)
+            VALUES (?, ?)
             """,
             (
                 user_id,
-                tag_id,
+                tag.lower(),
             ),
         )
 
         db.commit()
 
 
-def remove_user_tag(
-    user_id,
-    tag_id,
-):
+
+def remove_user_tag(user_id, tag):
 
     with get_db() as db:
 
         db.execute(
             """
             DELETE FROM user_tags
-
-            WHERE
-                user_id = ?
-                AND tag_id = ?
+            WHERE user_id = ?
+            AND tag = ?
             """,
             (
                 user_id,
-                tag_id,
+                tag.lower(),
             ),
         )
 
         db.commit()
+
 
 
 def get_user_tags(user_id):
@@ -556,61 +522,41 @@ def get_user_tags(user_id):
 
         rows = db.execute(
             """
-            SELECT
-                t.id,
-                t.name
-
-            FROM tags t
-
-            JOIN user_tags ut
-                ON ut.tag_id = t.id
-
-            WHERE ut.user_id = ?
-
-            ORDER BY t.name
+            SELECT tag
+            FROM user_tags
+            WHERE user_id = ?
             """,
             (
                 user_id,
             ),
         ).fetchall()
 
+
         return [
-            (
-                row["id"],
-                row["name"],
-            )
+            row["tag"]
             for row in rows
         ]
 
-def get_users_by_tag(tag_id):
+
+
+def get_users_by_tag(tag):
 
     with get_db() as db:
 
         rows = db.execute(
             """
-            SELECT 
-                u.user_id,
-                u.username
-
-            FROM user_tags ut
-
-            JOIN users u
-                ON u.user_id = ut.user_id
-
-            WHERE ut.tag_id = ?
-
-            ORDER BY u.username
+            SELECT user_id
+            FROM user_tags
+            WHERE tag = ?
             """,
             (
-                tag_id,
+                tag.lower(),
             ),
         ).fetchall()
 
+
         return [
-            (
-                row["user_id"],
-                row["username"],
-            )
+            row["user_id"]
             for row in rows
         ]
 
@@ -620,54 +566,44 @@ def get_all_tags():
 
         rows = db.execute(
             """
-            SELECT
-                id,
-                name
-
-            FROM tags
-
-            ORDER BY name
+            SELECT DISTINCT tag
+            FROM user_tags
+            ORDER BY tag
             """
         ).fetchall()
 
         return [
-            (
-                row["id"],
-                row["name"],
-            )
+            row["tag"]
             for row in rows
         ]
 
-def get_tag(tag_id):
-
-    with get_db() as db:
-
-        return db.execute(
-            """
-            SELECT
-                id,
-                name
-
-            FROM tags
-
-            WHERE id = ?
-            """,
-            (
-                tag_id,
-            ),
-        ).fetchone()
-
-def delete_tag(tag_id):
+def create_tag(tag):
 
     with get_db() as db:
 
         db.execute(
             """
-            DELETE FROM tags
-            WHERE id = ?
+            INSERT OR IGNORE INTO tags(tag)
+            VALUES(?)
             """,
             (
-                tag_id,
+                tag,
+            ),
+        )
+
+        db.commit()
+
+def delete_tag(tag):
+
+    with get_db() as db:
+
+        db.execute(
+            """
+            DELETE FROM user_tags
+            WHERE tag = ?
+            """,
+            (
+                tag,
             ),
         )
 

@@ -3,27 +3,16 @@ import traceback
 from config import CHANNEL_ID
 from database import (
     add_user_tag,
-    add_tag,
-    remove_user_tag,
-    get_user_tags,
-    get_users_by_tag,
-    get_tag,
-    get_all_tags,
-    delete_tag,
     deactivate_subscription,
+    remove_user_tag,
     selected_conversations,
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+
 async def owner_start(update, context):
 
     keyboard = [
-        [
-            InlineKeyboardButton(
-                "🏷 Управление тегами",
-                callback_data="owner_tags",
-            )
-        ],
         [
             InlineKeyboardButton(
                 "📨 Активные разговоры",
@@ -140,6 +129,8 @@ async def owner_button(
 
     if data == "owner_tag_broadcast":
 
+        from database import get_all_tags
+
         tags = get_all_tags()
 
         if not tags:
@@ -149,12 +140,12 @@ async def owner_button(
 
         keyboard = []
 
-        for tag_id, name in tags:
+        for tag in tags:
             keyboard.append(
                 [
                     InlineKeyboardButton(
-                        f"🏷 {name}",
-                        callback_data=f"broadcast_tag_{tag_id}",
+                        f"🏷 {tag}",
+                        callback_data=f"broadcast_tag_{tag}",
                     )
                 ]
             )
@@ -266,18 +257,20 @@ async def owner_button(
 
     if data.startswith("tag_add_"):
 
+        from database import get_all_tags
+
         user_id = int(data.replace("tag_add_", ""))
 
         tags = get_all_tags()
 
         keyboard = []
 
-        for tag_id, name in tags:
+        for tag in tags:
             keyboard.append(
                 [
                     InlineKeyboardButton(
-                        f"🏷 {name}",
-                        callback_data=f"add_existing_tag|{user_id}|{tag_id}",
+                        f"🏷 {tag}",
+                        callback_data=f"add_existing_tag|{user_id}|{tag}",
                     )
                 ]
             )
@@ -300,19 +293,21 @@ async def owner_button(
 
     if data.startswith("tag_list_"):
 
+        from database import get_user_tags
+
         user_id = int(data.replace("tag_list_", ""))
 
         tags = get_user_tags(user_id)
 
         await query.message.reply_text(
-            "Теги:\n" + "\n".join(
-                name for _, name in tags
-            ) if tags else "Нет тегов"
+            "Теги:\n" + "\n".join(tags) if tags else "Нет тегов"
         )
 
         return True
 
     if data.startswith("tag_remove_"):
+
+        from database import get_user_tags
 
         user_id = int(data.replace("tag_remove_", ""))
 
@@ -325,12 +320,12 @@ async def owner_button(
 
         keyboard = []
 
-        for tag_id, name in tags:
+        for tag in tags:
             keyboard.append(
                 [
                     InlineKeyboardButton(
-                        f"❌ {name}",
-                        callback_data=f"delete_tag_{user_id}_{tag_id}",
+                        f"❌ {tag}",
+                        callback_data=f"delete_tag|{user_id}_{tag}",
                     )
                 ]
             )
@@ -347,215 +342,23 @@ async def owner_button(
 
         user_id = int(parts[1])
 
-        tag_id = int(parts[2])
+        tag = parts[2]
 
         add_user_tag(
             user_id,
-            tag_id,
+            tag,
         )
 
-        tag = get_tag(tag_id)
-
-        await query.message.reply_text(
-            f"✅ Тег #{tag['name']} добавлен."
-        )
+        await query.message.reply_text(f"✅ Тег #{tag} добавлен.")
 
         return True
 
-    if data.startswith("broadcast_tag_"):
-        tag_id = int(
-            data.replace(
-                "broadcast_tag_",
-                ""
-            )
+    if data.startswith("new_tag|"):
+        user_id = int(
+            data.split("|")[1]
         )
 
-        context.user_data["broadcast_tag"] = tag_id
-
-        context.user_data["tag_broadcast_message"] = True
-
-        tag = get_tag(tag_id)
-
-        await query.message.reply_text(
-            f"Введите сообщение для пользователей с тегом #{tag['name']}:"
-        )
-
-        return True
-
-    if data.startswith("tag_users_"):
-
-        tag_id = int(data.replace("tag_users_", ""))
-
-        users = get_users_by_tag(tag_id)
-
-        if not users:
-            await query.message.reply_text(
-                "👥 Пользователей с этим тегом нет."
-            )
-            return True
-
-
-        keyboard = []
-
-        for user_id, username in users:
-            keyboard.append(
-                [
-                    InlineKeyboardButton(
-                        f"{username or user_id} ({user_id})",
-                        callback_data=f"open_{user_id}",
-                    )
-                ]
-            )
-
-
-        await query.message.reply_text(
-            "👥 Пользователи с тегом:",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
-
-        return True
-
-    if data.startswith("tag_add_user_"):
-
-        tag_id = int(data.replace("tag_add_user_", ""))
-
-        context.user_data["add_user_to_tag"] = tag_id
-
-
-        await query.message.reply_text(
-            "Введите ID пользователя которого хотите добавить:"
-        )
-
-        return True
-
-    if data.startswith("tag_remove_user_"):
-
-        tag_id = int(data.replace("tag_remove_user_", ""))
-
-        users = get_users_by_tag(tag_id)
-
-
-        if not users:
-
-            await query.message.reply_text(
-                "Нет пользователей с этим тегом."
-            )
-
-            return True
-
-
-        keyboard = []
-
-        for user_id, username in users:
-            keyboard.append(
-                [
-                    InlineKeyboardButton(
-                        f"❌ {username} ({user_id})",
-                        callback_data=f"remove_tag_user_{tag_id}_{user_id}",
-                    )
-                ]
-            )
-
-
-        await query.message.reply_text(
-            "Выберите пользователя:",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
-
-        return True
-
-    if data.startswith("remove_tag_user_"):
-
-        _, _, _, tag_id, user_id = data.split("_")
-
-        remove_user_tag(
-            user_id,
-            tag_id,
-        )
-
-
-        await query.message.reply_text(
-            "✅ Пользователь убран из тега."
-        )
-
-        return True
-
-    if data.startswith("manage_tag_"):
-
-        tag_id = int(data.split("_")[-1])
-
-        tag = get_tag(tag_id)
-
-        keyboard = [
-            [
-                InlineKeyboardButton(
-                    "👥 Пользователи",
-                    callback_data=f"tag_users_{tag_id}",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "➕ Добавить пользователя",
-                    callback_data=f"tag_add_user_{tag_id}",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "➖ Убрать пользователя",
-                    callback_data=f"tag_remove_user_{tag_id}",
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "❌ Удалить тег",
-                    callback_data=f"delete_global_tag_{tag_id}",
-                )
-            ],
-        ]
-
-        await query.message.reply_text(
-            f"🏷 Тег: {tag['name']}",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
-
-        return True
-
-    if data.startswith("delete_global_tag_"):
-
-        tag_id = int(data.split("_")[-1])
-
-        delete_tag(tag_id)
-
-        await query.message.reply_text(
-            "✅ Тег удалён."
-        )
-
-        return True
-
-    if data.startswith("delete_tag_"):
-        data_parts = data.replace(
-            "delete_tag_",
-            "",
-        )
-
-        user_id, tag_id = data_parts.split("_", 1)
-
-        tag = get_tag(int(tag_id))
-
-        remove_user_tag(
-            int(user_id),
-            int(tag_id),
-        )
-
-        await query.message.reply_text(
-            f"✅ Тег <b>{tag['name']}</b> удалён.",
-            parse_mode="HTML",
-        )
-
-        return True
-
-    if data == "create_tag":
-        context.user_data["create_tag"] = True
+        context.user_data["create_tag_user"] = user_id
 
         await query.message.reply_text(
             "Введите название нового тега:"
@@ -563,34 +366,33 @@ async def owner_button(
 
         return True
 
-    if data == "owner_tags":
+    if data.startswith("broadcast_tag_"):
 
-        tags = get_all_tags()
+        tag = data.replace("broadcast_tag_", "")
 
-        keyboard = []
+        context.user_data["broadcast_tag"] = tag
 
-        for tag_id, name in tags:
-            keyboard.append(
-                [
-                    InlineKeyboardButton(
-                        f"🏷 {name}",
-                        callback_data=f"manage_tag_{tag_id}",
-                    )
-                ]
-            )
+        context.user_data["tag_broadcast_message"] = True
 
-        keyboard.append(
-            [
-                InlineKeyboardButton(
-                    "➕ Добавить тег",
-                    callback_data="create_tag",
-                )
-            ]
+        await query.message.reply_text(
+            f"Введите сообщение для пользователей с тегом #{tag}:"
+        )
+
+        return True
+
+    if data.startswith("delete_tag|"):
+        parts = data.split("|")
+
+        user_id = int(parts[1])
+        tag = parts[2]
+
+        remove_user_tag(
+            user_id,
+            tag,
         )
 
         await query.message.reply_text(
-            "🏷 Управление тегами:",
-            reply_markup=InlineKeyboardMarkup(keyboard),
+            f"✅ Тег #{tag} удалён."
         )
 
         return True
@@ -606,41 +408,43 @@ async def owner_message(
 
     text = update.message.text
 
-    if context.user_data.get("add_user_to_tag"):
+    if context.user_data.get("create_tag_user"):
+        user_id = context.user_data.pop("create_tag_user")
 
-        tag_id = context.user_data.pop(
-            "add_user_to_tag"
-        )
-
-        user_id = int(text)
-
+        tag = text.lower().strip()
 
         add_user_tag(
             user_id,
-            tag_id,
+            tag,
         )
 
-
-        await update.message.reply_text(
-            "✅ Пользователь добавлен в тег."
-        )
+        await update.message.reply_text(f"✅ Новый тег #{tag} создан и добавлен.")
 
         return
 
-    if context.user_data.get("create_tag"):
+    if context.user_data.get("add_tag"):
 
-        context.user_data.pop("create_tag")
+        context.user_data["add_tag"] = False
 
-        add_tag(
-            text.strip().lower()
-        )
+        user_id = context.user_data.pop("tag_user_id")
 
-        await update.message.reply_text(
-            "✅ Тег создан."
-        )
+        add_user_tag(user_id, text.lower())
+
+        await update.message.reply_text("✅ Тег добавлен.")
 
         return
 
+    if context.user_data.get("remove_tag"):
+
+        context.user_data["remove_tag"] = False
+
+        user_id = context.user_data.pop("remove_tag_user_id")
+
+        remove_user_tag(user_id, text.lower())
+
+        await update.message.reply_text("✅ Тег удалён.")
+
+        return
 
     if context.user_data.get("manual_add_user"):
 
