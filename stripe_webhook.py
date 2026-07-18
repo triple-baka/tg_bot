@@ -151,7 +151,6 @@ async def stripe_webhook(request: Request):
     elif event_type == "customer.subscription.deleted":
 
         subscription = event["data"]["object"]
-        print(subscription)
 
         telegram_user_id = int(subscription.metadata["telegram_user_id"])
 
