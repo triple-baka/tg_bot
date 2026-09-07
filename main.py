@@ -10,16 +10,11 @@ app = FastAPI()
 
 app.include_router(router)
 
-telegram_app = create_bot()
-
-
 from database import init_db
 
 import bot_instance
 
 telegram_app = create_bot()
-
-import asyncio
 
 from subscription_checker import (
     check_expired_subscriptions
@@ -59,6 +54,9 @@ async def home():
         "status": "running"
     }
 
+#
+# Веб-страничка пользователя в случае успешной оплаты
+#
 @app.get("/success", response_class=HTMLResponse)
 async def success():
 
@@ -72,7 +70,9 @@ async def success():
     </html>
     """
    
-
+#
+# Веб-страничка пользователя в случае ошибки оплаты
+#
 @app.get("/cancel", response_class=HTMLResponse)
 async def cancel():
 

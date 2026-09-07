@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from config import OWNER_IDS
 
 
-DATABASE = "bot.db"
+DATABASE = "data/bot.db"
 
 
 @contextmanager
@@ -39,6 +39,7 @@ def init_db():
                 subscribed_until TIMESTAMP DEFAULT NULL,
                 tariff TEXT DEFAULT NULL,
                 trial_used BOOLEAN DEFAULT FALSE,
+                delete_on_expiration BOOLEAN DEFAULT TRUE,
                 subscription_id TEXT DEFAULT NULL
             )
             """
@@ -152,6 +153,39 @@ def activate_subscription(
                 tariff,
                 subscription_id,
                 user_id,
+            ),
+        )
+
+        # Remove previous tariff tags
+        db.execute(
+            """
+            DELETE FROM user_tags
+            WHERE
+                user_id = ?
+                AND tag IN (
+                    'recurring',
+                    'one_time',
+                    'trial'
+                )
+            """,
+            (
+                user_id,
+            ),
+        )
+
+        # Add current tariff as a tag
+        db.execute(
+            """
+            INSERT OR IGNORE INTO user_tags
+            (
+                user_id,
+                tag
+            )
+            VALUES (?, ?)
+            """,
+            (
+                user_id,
+                tariff.lower(),
             ),
         )
 
@@ -283,7 +317,6 @@ def is_subscribed(user_id):
         return bool(row and row["is_subscribed"])
 
 
-
 def get_subscription_status():
 
     with get_db() as db:
@@ -293,13 +326,13 @@ def get_subscription_status():
             microsecond=0
         )
 
-
         expired = db.execute(
             """
-            SELECT user_id
+            SELECT user_id, tariff
             FROM users
             WHERE
                 is_subscribed = TRUE
+                AND delete_on_expiration = TRUE
                 AND datetime(subscribed_until)
                 <= datetime(?)
             """,
@@ -308,18 +341,17 @@ def get_subscription_status():
             ),
         ).fetchall()
 
-
         reminder_time = (
             now + timedelta(minutes=2)
         )
 
-
         reminder = db.execute(
             """
-            SELECT user_id
+            SELECT user_id, tariff
             FROM users
             WHERE
                 is_subscribed = TRUE
+                AND delete_on_expiration = TRUE
                 AND strftime('%Y-%m-%d %H:%M',
                 subscribed_until)
                 =
@@ -333,14 +365,19 @@ def get_subscription_status():
             ),
         ).fetchall()
 
-
         return (
             [
-                row["user_id"]
+                {
+                    "user_id": row["user_id"],
+                    "tariff": row["tariff"],
+                }
                 for row in expired
             ],
             [
-                row["user_id"]
+                {
+                    "user_id": row["user_id"],
+                    "tariff": row["tariff"],
+                }
                 for row in reminder
             ],
         )
@@ -426,7 +463,27 @@ def deactivate_subscription(user_id):
             ),
         )
 
+        # Remove subscription tariff tags
+        db.execute(
+            """
+            DELETE FROM user_tags
+            WHERE
+                user_id = ?
+                AND tag IN (
+                    'recurring',
+                    'monthly',
+                    'yearly',
+                    'weekly',
+                    'trial'
+                )
+            """,
+            (
+                user_id,
+            ),
+        )
+
         db.commit()
+
 
 
 

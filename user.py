@@ -20,6 +20,10 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 stripe.api_key = STRIPE_SECRET_KEY
 
 
+#
+# Функция для создания платежа с помощью Stripe
+#
+
 async def create_checkout(
     user_id,
     payment_type,
@@ -28,6 +32,10 @@ async def create_checkout(
     common_metadata = {
         "telegram_user_id": str(user_id),
     }
+
+#
+# Обработка пробного тарифа
+#
 
     if payment_type == "trial":
 
@@ -48,6 +56,10 @@ async def create_checkout(
             client_reference_id=str(user_id),
         )
 
+#
+# Обработка одноразового платежа
+#
+
     elif payment_type == "one_time":
 
         common_metadata["tariff"] = "ONE_TIME"
@@ -66,6 +78,10 @@ async def create_checkout(
             cancel_url=f"{DOMAIN}/cancel",
             client_reference_id=str(user_id),
         )
+
+#
+# Обработка повторяющегося платежа
+#
 
     elif payment_type == "recurring":
 
@@ -94,6 +110,10 @@ async def create_checkout(
     return session.url
 
 
+#
+# Функция-обработчик когда юзер стартует бота
+#
+
 async def user_start(
     update,
     context,
@@ -104,6 +124,10 @@ async def user_start(
         f"id={update.effective_user.id}, "
         f"username={update.effective_user.username}"
     )
+
+#
+# Кнопки под сообщением
+#
 
     keyboard = [
         [
@@ -126,12 +150,19 @@ async def user_start(
         ],
     ]
 
+#
+# Сообщение при старте бота
+#
+
     await update.message.reply_text(
         "Добро пожаловать!",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
+#
+# Функция что обрабатывает нажатия на кнопки
+#
 async def user_button(
     update,
     context,
@@ -143,6 +174,10 @@ async def user_button(
 
     data = query.data
 
+
+#
+# Отображение личного кабинета при нажатии на кнопку (если юзер подписан)
+#
     if data == "cabinet":
 
         info = get_subscription_info(query.from_user.id)
@@ -153,6 +188,10 @@ async def user_button(
 
         if info["is_subscribed"]:
 
+#
+# Текст сообщения личного кабинета
+#
+
             text = (
                 "💼 <b>Личный кабинет</b>\n\n"
                 "✅ Подписка активна\n\n"
@@ -161,6 +200,9 @@ async def user_button(
                 f"⏳ Осталось: {info['days_left']} дн."
             )
 
+#
+# Кнопки в личном кабинете
+#
             keyboard = InlineKeyboardMarkup(
                 [
                     [
@@ -186,8 +228,14 @@ async def user_button(
 
         else:
 
+#
+# Сообщение если пользователь не подписан
+#
             text = "💼 <b>Личный кабинет</b>\n\n" "❌ У вас нет активной подписки."
 
+#
+# Кнопки если пользователь не подписан
+#
             keyboard = InlineKeyboardMarkup(
                 [
                     [
@@ -213,12 +261,18 @@ async def user_button(
 
         return True
 
+#
+# Сообщение-заглушка для смены тарифа (пока не реализовано)
+#
     if data == "cabinet_change_tariff":
 
         await query.message.reply_text("🚧 Возможность смены тарифа появится позже.")
 
         return True
 
+#
+# Обработка отмены подписки
+#
     if data == "cabinet_cancel":
 
         user_id = query.from_user.id
@@ -227,9 +281,9 @@ async def user_button(
 
             tariff = get_user_tariff(user_id)
 
-            #
-            # РЕГУЛЯРНАЯ ПОДПИСКА
-            #
+#
+# Отмена повторяющегося платежа
+#
             if tariff == "RECURRING":
 
                 subscription_id = get_subscription_id(user_id)
@@ -248,9 +302,9 @@ async def user_button(
 
                 return True
 
-            #
-            # TRIAL / ONE_TIME
-            #
+#
+# Обработка пробного тарифа/одноразового платежа
+#
             else:
 
                 await context.bot.ban_chat_member(
@@ -265,6 +319,9 @@ async def user_button(
 
                 deactivate_subscription(user_id)
 
+#
+# Сообщение-подтверждение отмены тарифа
+#
                 await query.message.reply_text(
                     "✅ Подписка отменена.\n\n" "Вы удалены из закрытого канала."
                 )
@@ -273,20 +330,35 @@ async def user_button(
 
         except Exception as e:
 
+#
+# Сообщение на случай ошибки отмены (в основном для тестировки)
+#
             await query.message.reply_text(f"Ошибка отмены: {e}")
 
         return True
 
+#
+# Обработка нажатия на кнопку "Сообщение владельцу"
+#
     if data == "contact_owner":
 
         context.user_data["chat_mode"] = True
 
+#
+# Сообщение после которого пользователь может написать владельцу 
+#
         await query.message.reply_text("Отправьте ваше сообщение.")
 
         return True
 
+#
+# Обработка нажатия на кнопку "Купить подписку"
+#
     if data == "buy_subscription":
 
+#
+# Кнопки для покупки подписки
+#
         keyboard = InlineKeyboardMarkup(
             [
                 [
@@ -310,6 +382,9 @@ async def user_button(
             ]
         )
 
+#
+# Текст сообщения меню покупки подписки
+#
         await query.message.reply_text(
             "Выберите вариант подписки:",
             reply_markup=keyboard,
@@ -317,6 +392,9 @@ async def user_button(
 
         return True
 
+#
+# Обработка покупки пробного доступа
+#
     if data == "buy_trial":
 
         if has_used_trial(query.from_user.id):
@@ -330,8 +408,15 @@ async def user_button(
             "trial",
         )
 
+#
+# Подтверждение получения пробного доступа (сообщение)
+#
         await query.message.reply_text(
             "Trial доступ:",
+
+#
+# Кнопка для оплаты пробной подписки
+#
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
@@ -346,6 +431,9 @@ async def user_button(
 
         return True
 
+#
+# Обработка покупки одноразовым платежом
+#
     if data == "buy_one_time":
 
         url = await create_checkout(
@@ -353,8 +441,14 @@ async def user_button(
             "one_time",
         )
 
+#
+# Сообщение покупки разовым платежом
+#
         await query.message.reply_text(
             "Разовая покупка:",
+#
+# Кнопка оплаты
+#
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
@@ -369,6 +463,9 @@ async def user_button(
 
         return True
 
+#
+# Обработка покупки повторяющимся платежом
+#
     if data == "buy_recurring":
 
         url = await create_checkout(
@@ -376,8 +473,14 @@ async def user_button(
             "recurring",
         )
 
+#
+# Сообщение покупки повторяющимся платежом
+#
         await query.message.reply_text(
             "Регулярная подписка:",
+#
+# Кнопка покупки повторяющимся платежом
+#
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
@@ -394,7 +497,9 @@ async def user_button(
 
     return False
 
-
+#
+# Функция что обрабатывает сообщения отправленые юзером владельцу
+#
 async def user_message(
     update,
     context,
@@ -411,6 +516,9 @@ async def user_message(
 
         try:
 
+#
+# Сообщение от пользователя владельцу
+#
             await context.bot.send_message(
                 OWNER_ID,
                 f"Новое сообщение\n\n"
@@ -423,15 +531,21 @@ async def user_message(
 
         except Exception as e:
 
+#
+# Сообщение пользователю в случае ошибки
+#
             print(f"Ошибка отправки владельцу {OWNER_ID}:", e)
 
     if sent:
-
+#
+# Сообщение пользователю в случае успешной отправки
+#
         await update.message.reply_text("Сообщение отправлено.")
 
     else:
-
+#
+# Сообщение пользователю в случае ошибки
+#
         await update.message.reply_text("❌ Не удалось отправить сообщение владельцу.")
 
-    # отключаем режим после отправки
     context.user_data["chat_mode"] = False

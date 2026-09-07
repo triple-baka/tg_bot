@@ -36,9 +36,9 @@ async def stripe_webhook(request: Request):
 
     event_type = event["type"]
 
-    #
-    # НОВАЯ ПОКУПКА
-    #
+#
+# НОВАЯ ПОКУПКА
+#
     if event_type == "checkout.session.completed":
 
         session = event["data"]["object"]
@@ -49,9 +49,9 @@ async def stripe_webhook(request: Request):
 
         tariff = metadata["tariff"] if "tariff" in metadata else None
 
-        #
-        # fallback для payment
-        #
+#
+# fallback для payment
+#
         payment_intent_id = getattr(session, "payment_intent", None)
 
         if not tariff and payment_intent_id:
@@ -65,9 +65,9 @@ async def stripe_webhook(request: Request):
 
         subscription_id = None
 
-        #
-        # RECURRING
-        #
+#
+# RECURRING
+#
         if session["mode"] == "subscription":
 
             subscription = stripe.Subscription.retrieve(session["subscription"])
@@ -77,9 +77,9 @@ async def stripe_webhook(request: Request):
 
             subscription_id = session["subscription"]
 
-        #
-        # TRIAL / ONE_TIME
-        #
+#
+# TRIAL / ONE_TIME
+#
         else:
 
             expires = (datetime.now() + timedelta(minutes=5)).replace(microsecond=0)
@@ -100,6 +100,9 @@ async def stripe_webhook(request: Request):
             member_limit=1,
         )
 
+#
+# Сообщение со ссылкой на канал после успешной оплаты
+#
         await bot_instance.telegram_bot.send_message(
             chat_id=telegram_user_id,
             text=(
@@ -112,9 +115,9 @@ async def stripe_webhook(request: Request):
 
         print("Activated:", telegram_user_id, tariff)
 
-    #
-    # ПРОДЛЕНИЕ RECURRING
-    #
+#
+# Продление повторяющегося платежа
+#
     elif event_type == "invoice.paid":
 
         invoice = event["data"]["object"]
@@ -139,15 +142,18 @@ async def stripe_webhook(request: Request):
             invoice["subscription"],
         )
 
+#
+# Сообщение о продлении подписки с помощью повторяющегося платжа
+#
         await bot_instance.telegram_bot.send_message(
             telegram_user_id, "✅ Подписка продлена!"
         )
 
         print("Renewed:", telegram_user_id)
 
-    #
-    # ПОЛНАЯ ОТМЕНА RECURRING
-    #
+#
+# ПОЛНАЯ ОТМЕНА RECURRING
+#
     elif event_type == "customer.subscription.deleted":
 
         subscription = event["data"]["object"]
@@ -166,6 +172,9 @@ async def stripe_webhook(request: Request):
                 telegram_user_id,
             )
 
+#
+# Кнопки после отмены подписки
+#
             keyboard = InlineKeyboardMarkup(
                 [
                     [
@@ -177,6 +186,9 @@ async def stripe_webhook(request: Request):
                 ]
             )
 
+#
+# Сообщение после отмены подписки
+#
             await bot_instance.telegram_bot.send_message(
                 telegram_user_id,
                 "❌ Подписка закончилась.\n\n"
@@ -192,9 +204,9 @@ async def stripe_webhook(request: Request):
 
             print("Delete error:", e)
 
-    #
-    # ОТКЛЮЧЕНИЕ АВТОПРОДЛЕНИЯ
-    #
+#
+# ОТКЛЮЧЕНИЕ АВТОПРОДЛЕНИЯ
+#
     elif event_type == "customer.subscription.updated":
 
         subscription = event["data"]["object"]
@@ -207,6 +219,9 @@ async def stripe_webhook(request: Request):
                 subscription["items"]["data"][0]["current_period_end"]
             )
 
+#
+# Сообщение после отмены продления подписки
+#
             await bot_instance.telegram_bot.send_message(
                 telegram_user_id,
                 (

@@ -9,6 +9,11 @@ from config import CHANNEL_ID
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
+#
+# Частота проверки истекших пользователей в секундах (для тестов 1 минута)
+#
+CHECK_TIME = 60
+
 async def check_expired_subscriptions(bot):
 
     while True:
@@ -18,24 +23,43 @@ async def check_expired_subscriptions(bot):
 
         print("Expired ", expired_users)
         print("Reminder ", reminder_users)
-        for user_id in reminder_users:
-            keyboard = InlineKeyboardMarkup(
-                [[
-                    InlineKeyboardButton(
-                        "⭐ Продлить подписку",
-                        callback_data="buy_subscription",
-                    )
-                ]]
-            )
+        for user in reminder_users:
+            tariff = user["tariff"]
+            user_id = user["user_id"]
 
-            await bot.send_message(
-                user_id,
-                "⏳ До окончания подписки осталось менее 2 дней.\n\n"
-                "Продлите подписку заранее.",
-                reply_markup=keyboard,
-            )
+            if tariff == "RECURRING":
+#
+# Сообщение напоминалки о автопродлении подписки
+#
+                await bot.send_message(
+                    user_id,
+                    "⏳ Подписка на канал будет автоматически продена через 2 дня.\n\n"
+                )
+            else:
 
-        for user_id in expired_users:
+                keyboard = InlineKeyboardMarkup(
+#
+# Кнопка напоминалки пользователю продлить подписку
+#
+                    [[
+                        InlineKeyboardButton(
+                            "⭐ Продлить подписку",
+                            callback_data="buy_subscription",
+                        )
+                    ]]
+                )
+#
+# Сообщение напоминалки пользователю продлить подписку
+#
+                await bot.send_message(
+                    user_id,
+                    "⏳ Подписка на канал истечет через 2 дня.\n\n",
+                    reply_markup=keyboard,
+                )
+
+        for user in expired_users:
+
+            user_id = user['user_id']
 
             try:
 
@@ -50,6 +74,9 @@ async def check_expired_subscriptions(bot):
                     user_id,
                 )
 
+#
+# Кнопка напоминалки пользователю купить подписку после истечения
+#
                 keyboard = InlineKeyboardMarkup(
                     [
                         [
@@ -61,6 +88,9 @@ async def check_expired_subscriptions(bot):
                     ]
                 )
 
+#
+# Сообщения напоминалка пользователю о истечении подписки
+#
                 await bot.send_message(
                     user_id,
                     "❌ Ваша подписка истекла.\n\n"
@@ -88,7 +118,6 @@ async def check_expired_subscriptions(bot):
                     e,
                 )
 
-
         await asyncio.sleep(
-            60
+            CHECK_TIME
         )
