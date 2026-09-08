@@ -91,7 +91,7 @@ async def stripe_webhook(request: Request):
             subscription_id,
         )
 
-        if tariff == Tariff.TRIAL:
+        if tariff == Tariff.TRIAL.value:
 
             mark_trial_used(telegram_user_id)
 
