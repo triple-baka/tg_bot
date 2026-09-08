@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import bot_instance
 import stripe
-from config import CHANNEL_ID, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+from config import CHANNEL_ID, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, Tariff
 from database import activate_subscription, deactivate_subscription, mark_trial_used
 from fastapi import APIRouter, Request
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -91,7 +91,7 @@ async def stripe_webhook(request: Request):
             subscription_id,
         )
 
-        if tariff == "TRIAL":
+        if tariff == Tariff.TRIAL:
 
             mark_trial_used(telegram_user_id)
 
@@ -138,7 +138,7 @@ async def stripe_webhook(request: Request):
         activate_subscription(
             telegram_user_id,
             expires.strftime("%Y-%m-%d %H:%M:%S"),
-            "RECURRING",
+            Tariff.RECURRING,
             invoice["subscription"],
         )
 

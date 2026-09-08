@@ -5,7 +5,7 @@ from database import (
     deactivate_subscription,
 )
 
-from config import CHANNEL_ID
+from config import CHANNEL_ID, Tariff
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -27,7 +27,7 @@ async def check_expired_subscriptions(bot):
             tariff = user["tariff"]
             user_id = user["user_id"]
 
-            if tariff == "RECURRING":
+            if tariff == Tariff.RECURRING:
 #
 # Сообщение напоминалки о автопродлении подписки
 #

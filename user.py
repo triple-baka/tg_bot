@@ -7,6 +7,7 @@ from config import (
     STRIPE_PRICE_RECURRING_ID,
     STRIPE_SECRET_KEY,
     STRIPE_TRIAL_PRICE_ID,
+    Tariff
 )
 from database import (
     deactivate_subscription,
@@ -26,20 +27,19 @@ stripe.api_key = STRIPE_SECRET_KEY
 
 async def create_checkout(
     user_id,
-    payment_type,
+    tariff: Tariff,
 ):
 
     common_metadata = {
         "telegram_user_id": str(user_id),
+        "tariff": tariff.value,
     }
 
 #
-# Обработка пробного тарифа
+# Пробная подписка
 #
 
-    if payment_type == "trial":
-
-        common_metadata["tariff"] = "TRIAL"
+    if tariff == Tariff.TRIAL:
 
         session = stripe.checkout.Session.create(
             mode="payment",
@@ -50,42 +50,19 @@ async def create_checkout(
                 }
             ],
             metadata=common_metadata,
-            payment_intent_data={"metadata": common_metadata},
+            payment_intent_data={
+                "metadata": common_metadata
+            },
             success_url=f"{DOMAIN}/success",
             cancel_url=f"{DOMAIN}/cancel",
             client_reference_id=str(user_id),
         )
 
 #
-# Обработка одноразового платежа
+# Повторяющийся платёж
 #
 
-    elif payment_type == "one_time":
-
-        common_metadata["tariff"] = "ONE_TIME"
-
-        session = stripe.checkout.Session.create(
-            mode="payment",
-            line_items=[
-                {
-                    "price": STRIPE_ONE_TIME_PRICE_ID,
-                    "quantity": 1,
-                }
-            ],
-            metadata=common_metadata,
-            payment_intent_data={"metadata": common_metadata},
-            success_url=f"{DOMAIN}/success",
-            cancel_url=f"{DOMAIN}/cancel",
-            client_reference_id=str(user_id),
-        )
-
-#
-# Обработка повторяющегося платежа
-#
-
-    elif payment_type == "recurring":
-
-        common_metadata["tariff"] = "RECURRING"
+    elif tariff == Tariff.RECURRING:
 
         session = stripe.checkout.Session.create(
             mode="subscription",
@@ -96,19 +73,26 @@ async def create_checkout(
                 }
             ],
             metadata=common_metadata,
-            subscription_data={"metadata": common_metadata},
+            subscription_data={
+                "metadata": common_metadata
+            },
             success_url=f"{DOMAIN}/success",
             cancel_url=f"{DOMAIN}/cancel",
             client_reference_id=str(user_id),
         )
 
     else:
-        raise ValueError("Unknown payment type")
+        raise ValueError(
+            f"Unknown tariff: {tariff}"
+        )
 
-    print("Created checkout:", payment_type, session.id)
+    print(
+        "Created checkout:",
+        tariff.value,
+        session.id,
+    )
 
     return session.url
-
 
 #
 # Функция-обработчик когда юзер стартует бота
@@ -369,12 +353,6 @@ async def user_button(
                 ],
                 [
                     InlineKeyboardButton(
-                        "💳 Разовая оплата",
-                        callback_data="buy_one_time",
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
                         "🔄 Ежемесячная подписка",
                         callback_data="buy_recurring",
                     )
@@ -405,7 +383,7 @@ async def user_button(
 
         url = await create_checkout(
             query.from_user.id,
-            "trial",
+            Tariff.TRIAL,
         )
 
 #
@@ -430,39 +408,6 @@ async def user_button(
         )
 
         return True
-
-#
-# Обработка покупки одноразовым платежом
-#
-    if data == "buy_one_time":
-
-        url = await create_checkout(
-            query.from_user.id,
-            "one_time",
-        )
-
-#
-# Сообщение покупки разовым платежом
-#
-        await query.message.reply_text(
-            "Разовая покупка:",
-#
-# Кнопка оплаты
-#
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton(
-                            "💳 Оплатить",
-                            url=url,
-                        )
-                    ]
-                ]
-            ),
-        )
-
-        return True
-
 #
 # Обработка покупки повторяющимся платежом
 #
@@ -470,7 +415,7 @@ async def user_button(
 
         url = await create_checkout(
             query.from_user.id,
-            "recurring",
+            Tariff.RECURRING,
         )
 
 #

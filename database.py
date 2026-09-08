@@ -627,4 +627,95 @@ def get_all_tags():
             for row in rows
         ]
 
+def get_delete_on_expiration(user_id):
+    """
+    Return whether the user's content should be deleted
+    when their subscription expires.
+    """
+    with get_db() as db:
+
+        row = db.execute(
+            """
+            SELECT delete_on_expiration
+            FROM users
+            WHERE user_id = ?
+            """,
+            (
+                user_id,
+            ),
+        ).fetchone()
+
+        if not row:
+            return None
+
+        return bool(row["delete_on_expiration"])
+
+
+def set_delete_on_expiration(user_id, enabled):
+    """
+    Enable or disable deletion of the user's content
+    when their subscription expires.
+    """
+    with get_db() as db:
+
+        db.execute(
+            """
+            UPDATE users
+
+            SET delete_on_expiration = ?
+
+            WHERE user_id = ?
+            """,
+            (
+                bool(enabled),
+                user_id,
+            ),
+        )
+
+        db.commit()
+
+
+def toggle_delete_on_expiration(user_id):
+    """
+    Toggle the user's delete_on_expiration setting.
+
+    Returns the new value.
+    """
+    with get_db() as db:
+
+        row = db.execute(
+            """
+            SELECT delete_on_expiration
+            FROM users
+            WHERE user_id = ?
+            """,
+            (
+                user_id,
+            ),
+        ).fetchone()
+
+        if not row:
+            return None
+
+        new_value = not bool(row["delete_on_expiration"])
+
+        db.execute(
+            """
+            UPDATE users
+
+            SET delete_on_expiration = ?
+
+            WHERE user_id = ?
+            """,
+            (
+                new_value,
+                user_id,
+            ),
+        )
+
+        db.commit()
+
+        return new_value
+
+
 selected_conversations = {}

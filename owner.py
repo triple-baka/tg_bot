@@ -8,7 +8,9 @@ from database import (
     selected_conversations,
     get_all_tags,
     get_user_tags,
-    get_users_by_tag
+    get_users_by_tag,
+    get_delete_on_expiration,
+    toggle_delete_on_expiration,
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -213,51 +215,52 @@ async def owner_button(
 
         selected_conversations[query.from_user.id] = user_id
 
+        delete_on_expiration = get_delete_on_expiration(user_id)
+
+#
+# Текст кнопки переключения автоудаления
+#
+        if delete_on_expiration:
+            delete_button_text = "🗑 Удалять при окончании: ВКЛ"
+        else:
+            delete_button_text = "🗑 Удалять при окончании: ВЫКЛ"
+
 #
 # Кнопки меню управления пользователем
 #
         keyboard = [
             [
                 InlineKeyboardButton(
-#
-# Кнопка просмотра тегов пользователя
-#
                     "📋 Теги",
                     callback_data=f"tag_list_{user_id}",
                 )
             ],
             [
                 InlineKeyboardButton(
-#
-# Кнопка добавления тегов пользователю
-#
                     "🏷 Добавить тег",
                     callback_data=f"tag_add_{user_id}",
                 )
             ],
             [
                 InlineKeyboardButton(
-#
-# Кнопка удаления тегов пользователя
-#
                     "❌ Удалить тег",
                     callback_data=f"tag_remove_{user_id}",
                 )
             ],
             [
                 InlineKeyboardButton(
-#
-# Кнопка добавления пользователя вручную
-#
+                    delete_button_text,
+                    callback_data=f"toggle_delete_{user_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     "➕ Добавить в группу",
                     callback_data=f"add_{user_id}",
                 )
             ],
             [
                 InlineKeyboardButton(
-#
-# Кнопка удаления пользователя вручную
-#
                     "➖ Удалить из группы",
                     callback_data=f"remove_{user_id}",
                 )
@@ -265,12 +268,81 @@ async def owner_button(
         ]
 
         await query.message.reply_text(
-#
-# Сообщение меню управления пользователем
-#
             f"Пользователь: {user_id}",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
+
+        return True
+
+#
+# Обновление текста кнопок после переключения автоудаления
+#
+    if data.startswith("toggle_delete_"):
+
+        user_id = int(
+            data.replace("toggle_delete_", "")
+        )
+
+        new_value = toggle_delete_on_expiration(user_id)
+
+        if new_value is None:
+            await query.answer(
+                "Пользователь не найден.",
+                show_alert=True,
+            )
+            return True
+
+        delete_button_text = (
+            "🗑 Удалять при окончании: ВКЛ"
+            if new_value
+            else
+            "🗑 Удалять при окончании: ВЫКЛ"
+        )
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "📋 Теги",
+                    callback_data=f"tag_list_{user_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🏷 Добавить тег",
+                    callback_data=f"tag_add_{user_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "❌ Удалить тег",
+                    callback_data=f"tag_remove_{user_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    delete_button_text,
+                    callback_data=f"toggle_delete_{user_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "➕ Добавить в группу",
+                    callback_data=f"add_{user_id}",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "➖ Удалить из группы",
+                    callback_data=f"remove_{user_id}",
+                )
+            ],
+        ]
+
+        await query.edit_message_reply_markup(
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+        await query.answer()
 
         return True
 

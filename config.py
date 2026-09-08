@@ -1,6 +1,7 @@
 # config.py
 import os
 from dotenv import load_dotenv
+from enum import Enum
 
 load_dotenv()
 
@@ -14,3 +15,10 @@ STRIPE_ONE_TIME_PRICE_ID = os.getenv('STRIPE_ONE_TIME_PRICE_ID')
 STRIPE_TRIAL_PRICE_ID = os.getenv('STRIPE_TRIAL_PRICE_ID')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')
 DOMAIN = os.getenv('DOMAIN')
+
+class Tariff(Enum):
+    RECURRING = "Повторяющийся платёж"
+    TRIAL = "Пробная подписка"
+
+    def __str__(self):
+        return self.value
