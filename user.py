@@ -268,7 +268,7 @@ async def user_button(
 #
 # Отмена повторяющегося платежа
 #
-            if tariff == "RECURRING":
+            if tariff == Tariff.RECURRING:
 
                 subscription_id = get_subscription_id(user_id)
 

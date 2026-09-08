@@ -532,6 +532,12 @@ def mark_trial_used(user_id):
 
 def add_user_tag(user_id, tag):
 
+    tag = tag.strip().lower()
+
+    # Добавляем # в начало, если его ещё нет
+    if not tag.startswith("#"):
+        tag = f"#{tag}"
+
     with get_db() as db:
 
         db.execute(
@@ -545,11 +551,12 @@ def add_user_tag(user_id, tag):
             """,
             (
                 user_id,
-                tag.lower(),
+                tag,
             ),
         )
 
         db.commit()
+
 
 
 

@@ -466,7 +466,7 @@ async def owner_button(
 #
 # Сообщение-подтверждение добавления существующего тега пользователю
 #
-        await query.message.reply_text(f"✅ Тег #{tag} добавлен.")
+        await query.message.reply_text(f"✅ Тег{tag} добавлен.")
 
         return True
 
@@ -498,7 +498,7 @@ async def owner_button(
 # Сообщение рассылки по тегу
 #
         await query.message.reply_text(
-            f"Введите сообщение для пользователей с тегом #{tag}:"
+            f"Введите сообщение для пользователей с тегом {tag}:"
         )
 
         return True
@@ -515,7 +515,7 @@ async def owner_button(
 # Сообщение-подтверждение удаления тега у пользователя
 #
         await query.message.reply_text(
-            f"✅ Тег #{tag} удалён."
+            f"✅ Тег {tag} удалён."
         )
 
         return True
