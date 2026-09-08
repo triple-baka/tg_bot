@@ -30,10 +30,21 @@ async def create_checkout(
     tariff: Tariff,
 ):
 
+    print(
+        "START create_checkout:",
+        user_id,
+        tariff,
+        tariff.value,
+    )
+
     common_metadata = {
         "telegram_user_id": str(user_id),
         "tariff": tariff.value,
     }
+
+    print(
+        "Creating Stripe session..."
+    )
 
     if tariff == Tariff.TRIAL:
 
@@ -74,6 +85,7 @@ async def create_checkout(
         )
 
     else:
+
         raise ValueError(
             f"Unknown tariff: {tariff}"
         )
@@ -85,14 +97,24 @@ async def create_checkout(
     )
 
     print(
-        "Checkout URL:",
+        "SESSION URL:",
         session.url,
     )
 
+    print(
+        "SESSION URL TYPE:",
+        type(session.url),
+    )
+
     if not session.url:
+
         raise RuntimeError(
-            f"Stripe Checkout URL is empty. Session: {session.id}"
+            f"Stripe returned empty session.url: {session.id}"
         )
+
+    print(
+        "Returning checkout URL..."
+    )
 
     return session.url
 
