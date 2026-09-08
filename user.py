@@ -35,10 +35,6 @@ async def create_checkout(
         "tariff": tariff.value,
     }
 
-#
-# Пробная подписка
-#
-
     if tariff == Tariff.TRIAL:
 
         session = stripe.checkout.Session.create(
@@ -51,16 +47,12 @@ async def create_checkout(
             ],
             metadata=common_metadata,
             payment_intent_data={
-                "metadata": common_metadata
+                "metadata": common_metadata,
             },
             success_url=f"{DOMAIN}/success",
             cancel_url=f"{DOMAIN}/cancel",
             client_reference_id=str(user_id),
         )
-
-#
-# Повторяющийся платёж
-#
 
     elif tariff == Tariff.RECURRING:
 
@@ -74,7 +66,7 @@ async def create_checkout(
             ],
             metadata=common_metadata,
             subscription_data={
-                "metadata": common_metadata
+                "metadata": common_metadata,
             },
             success_url=f"{DOMAIN}/success",
             cancel_url=f"{DOMAIN}/cancel",
@@ -91,6 +83,16 @@ async def create_checkout(
         tariff.value,
         session.id,
     )
+
+    print(
+        "Checkout URL:",
+        session.url,
+    )
+
+    if not session.url:
+        raise RuntimeError(
+            f"Stripe Checkout URL is empty. Session: {session.id}"
+        )
 
     return session.url
 
