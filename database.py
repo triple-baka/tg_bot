@@ -2,7 +2,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 
-from config import OWNER_IDS
+from config import OWNER_IDS, Tariff
 
 
 DATABASE = "data/bot.db"
@@ -440,8 +440,6 @@ def get_subscription_info(user_id):
             "tariff": row["tariff"],
         }
 
-
-
 def deactivate_subscription(user_id):
 
     with get_db() as db:
@@ -469,22 +467,16 @@ def deactivate_subscription(user_id):
             DELETE FROM user_tags
             WHERE
                 user_id = ?
-                AND tag IN (
-                    'recurring',
-                    'monthly',
-                    'yearly',
-                    'weekly',
-                    'trial'
-                )
+                AND tag IN (?, ?)
             """,
             (
                 user_id,
+                Tariff.TRIAL.value.lower(),
+                Tariff.RECURRING.value.lower(),
             ),
         )
 
         db.commit()
-
-
 
 
 def has_used_trial(user_id):

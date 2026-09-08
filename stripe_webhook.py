@@ -138,7 +138,7 @@ async def stripe_webhook(request: Request):
         activate_subscription(
             telegram_user_id,
             expires.strftime("%Y-%m-%d %H:%M:%S"),
-            Tariff.RECURRING,
+            Tariff.RECURRING.value,
             invoice["subscription"],
         )
 
