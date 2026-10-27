@@ -213,12 +213,12 @@ async def user_button(
 #
             keyboard = InlineKeyboardMarkup(
                 [
-                    [
+                    '''[
                         InlineKeyboardButton(
                             "🔄 Сменить тариф",
                             callback_data="cabinet_change_tariff",
                         )
-                    ],
+                    ],'''
                     [
                         InlineKeyboardButton(
                             "❌ Отписаться",
