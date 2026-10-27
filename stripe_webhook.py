@@ -82,16 +82,6 @@ async def stripe_webhook(request: Request):
 #
         else:
             expires = (datetime.now() + timedelta(days=15)).replace(microsecond=0)
-
-        try:
-            chat = await bot_instance.telegram_bot.get_chat(CHANNEL_ID)
-
-            print("Chat ID:", chat.id)
-            print("Chat title:", chat.title)
-            print("Chat type:", chat.type)
-
-        except Exception as e:
-            print("Chat lookup failed:", repr(e))
         
         activate_subscription(
             telegram_user_id,
