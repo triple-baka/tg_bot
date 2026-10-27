@@ -82,7 +82,7 @@ async def stripe_webhook(request: Request):
 #
         else:
 
-            expires = (datetime.now() + timedelta(minutes=5)).replace(microsecond=0)
+            expires = (datetime.now() + timedelta(days=15)).replace(microsecond=0)
 
         activate_subscription(
             telegram_user_id,
