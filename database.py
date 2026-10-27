@@ -342,7 +342,7 @@ def get_subscription_status():
         ).fetchall()
 
         reminder_time = (
-            now + timedelta(minutes=2)
+            now + timedelta(days=2)
         )
 
         reminder = db.execute(
@@ -628,7 +628,7 @@ def get_all_tags():
 
 def get_delete_on_expiration(user_id):
     """
-    Return whether the user's content should be deleted
+    Return whether the user should be deleted
     when their subscription expires.
     """
     with get_db() as db:
@@ -652,7 +652,7 @@ def get_delete_on_expiration(user_id):
 
 def set_delete_on_expiration(user_id, enabled):
     """
-    Enable or disable deletion of the user's content
+    Enable or disable deletion of the user
     when their subscription expires.
     """
     with get_db() as db:
