@@ -212,12 +212,6 @@ async def user_button(
 #
             keyboard = InlineKeyboardMarkup(
                 [
-                    '''[
-                        InlineKeyboardButton(
-                            "🔄 Сменить тариф",
-                            callback_data="cabinet_change_tariff",
-                        )
-                    ],'''
                     [
                         InlineKeyboardButton(
                             "❌ Отписаться",
@@ -265,15 +259,6 @@ async def user_button(
             parse_mode="HTML",
             reply_markup=keyboard,
         )
-
-        return True
-
-#
-# Сообщение-заглушка для смены тарифа (пока не реализовано)
-#
-    if data == "cabinet_change_tariff":
-
-        await query.message.reply_text("🚧 Возможность смены тарифа появится позже.")
 
         return True
 
