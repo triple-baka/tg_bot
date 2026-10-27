@@ -12,7 +12,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 #
 # Частота проверки истекших пользователей в секундах (для тестов 1 минута)
 #
-CHECK_TIME = 60
+CHECK_TIME = 86400
 
 async def check_expired_subscriptions(bot):
 
