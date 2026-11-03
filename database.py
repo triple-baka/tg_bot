@@ -163,9 +163,9 @@ def activate_subscription(
             WHERE
                 user_id = ?
                 AND tag IN (
-                    'recurring',
-                    'one_time',
-                    'trial'
+                    '#recurring',
+                    '#one_time',
+                    '#trial'
                 )
             """,
             (
@@ -185,7 +185,7 @@ def activate_subscription(
             """,
             (
                 user_id,
-                tariff.lower(),
+                f"#{tariff.lower()}",
             ),
         )
 
