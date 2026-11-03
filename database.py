@@ -597,9 +597,6 @@ def get_users_by_tag(tag):
 
     tag = tag.strip().lower()
 
-    if not tag.startswith("#"):
-        tag = f"#{tag}"
-
     with get_db() as db:
 
         users = db.execute(
