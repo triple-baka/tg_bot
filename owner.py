@@ -53,6 +53,18 @@ async def owner_start(update, context):
                 callback_data="owner_remove_user",
             )
         ],
+        [
+            InlineKeyboardButton(
+                "📋 Все теги",
+                callback_data="owner_all_tags",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "👥 Пользователи по тегу",
+                callback_data="owner_users_by_tag",
+            )
+        ],
     ]
 #
 # Сообщение панели управления
@@ -185,7 +197,7 @@ async def owner_button(
 #
 # Если теги есть то для каждого тега появляется кнопка
 #
-        for tag in tags:
+        for tag, count in tags:
             keyboard.append(
                 [
                     InlineKeyboardButton(
@@ -356,7 +368,7 @@ async def owner_button(
 #
 # Добавление тега пользователю с кнопками под каждый тег
 #
-        for tag in tags:
+        for tag, count in tags:
             keyboard.append(
                 [
                     InlineKeyboardButton(
@@ -580,6 +592,91 @@ async def owner_button(
 # Сообщение админу на случай ошибки при удалении пользователя вручную
 #
             await query.message.reply_text(f"Ошибка:\n{e}")
+
+        return True
+
+    if data == "owner_all_tags":
+
+        tags = get_all_tags()
+
+        if not tags:
+            await query.message.reply_text(
+                "❌ Тегов пока нет."
+            )
+            return True
+
+        message = "📋 Все существующие теги:\n\n"
+
+        for tag, count in tags:
+
+            message += (
+                f"🏷 {tag} — {count} пользователей\n"
+            )
+
+        await query.message.reply_text(message)
+
+        return True
+
+    if data == "owner_users_by_tag":
+
+        tags = get_all_tags()
+
+        if not tags:
+            await query.message.reply_text(
+                "❌ Тегов пока нет."
+            )
+            return True
+
+        keyboard = []
+
+        for tag, count in tags:
+
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"🏷 {tag} ({count})",
+                        callback_data=f"view_tag_users|{tag}",
+                    )
+                ]
+            )
+
+        await query.message.reply_text(
+            "Выберите тег, чтобы посмотреть пользователей:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return True
+
+    if data.startswith("view_tag_users|"):
+
+        tag = data.split("|", 1)[1]
+
+        users = get_users_by_tag(tag)
+
+        if not users:
+            await query.message.reply_text(
+                f"❌ Пользователей с тегом {tag} нет."
+            )
+            return True
+
+        message = (
+            f"👥 Пользователи с тегом {tag}:\n\n"
+        )
+
+        for user_id, username in users:
+
+            username_text = (
+                f"@{username}"
+                if username
+                else "Без username"
+            )
+
+            message += (
+                f"👤 {username_text}\n"
+                f"🆔 {user_id}\n\n"
+            )
+
+        await query.message.reply_text(message)
 
         return True
 
