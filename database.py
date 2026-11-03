@@ -593,21 +593,36 @@ def get_user_tags(user_id):
             for row in rows
         ]
 
-
-
 def get_users_by_tag(tag):
+
+    tag = tag.strip().lower()
+
+    if not tag.startswith("#"):
+        tag = f"#{tag}"
+
     with get_db() as db:
 
         users = db.execute(
             """
-            SELECT DISTINCT user_id
-            FROM user_tags
-            WHERE tag = ?
+            SELECT
+                u.user_id,
+                u.username
+            FROM users u
+            INNER JOIN user_tags t
+                ON u.user_id = t.user_id
+            WHERE t.tag = ?
+            ORDER BY u.started_at DESC
             """,
             (tag,),
         ).fetchall()
 
-        return users
+        return [
+            (
+                row["user_id"],
+                row["username"],
+            )
+            for row in users
+        ]
 
 def get_all_tags():
 
@@ -615,14 +630,20 @@ def get_all_tags():
 
         rows = db.execute(
             """
-            SELECT DISTINCT tag
+            SELECT
+                tag,
+                COUNT(DISTINCT user_id) AS user_count
             FROM user_tags
+            GROUP BY tag
             ORDER BY tag
             """
         ).fetchall()
 
         return [
-            row["tag"]
+            (
+                row["tag"],
+                row["user_count"],
+            )
             for row in rows
         ]
 
