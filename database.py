@@ -125,7 +125,13 @@ def get_all_users():
             for row in rows
         ]
 
+def normalize_tag(tag):
+    tag = tag.strip().lower().replace(" ", "_")
 
+    if not tag.startswith("#"):
+        tag = f"#{tag}"
+
+    return tag
 
 def activate_subscription(
     user_id,
@@ -185,7 +191,7 @@ def activate_subscription(
             """,
             (
                 user_id,
-                f"#{tariff.lower()}",
+                normalize_tag(tariff),
             ),
         )
 
@@ -524,11 +530,7 @@ def mark_trial_used(user_id):
 
 def add_user_tag(user_id, tag):
 
-    tag = tag.strip().lower()
-
-    # Добавляем # в начало, если его ещё нет
-    if not tag.startswith("#"):
-        tag = f"#{tag}"
+    tag = normalize_tag(tag)
 
     with get_db() as db:
 
@@ -554,6 +556,8 @@ def add_user_tag(user_id, tag):
 
 def remove_user_tag(user_id, tag):
 
+    tag = normalize_tag(tag)
+    
     with get_db() as db:
 
         db.execute(
@@ -595,7 +599,7 @@ def get_user_tags(user_id):
 
 def get_users_by_tag(tag):
 
-    tag = tag.strip().lower()
+    tag = normalize_tag(tag)
 
     with get_db() as db:
 
