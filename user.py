@@ -187,7 +187,21 @@ async def user_button(
 
     data = query.data
 
+        # Возврат в главное меню
+    if data == "user_back":
 
+        keyboard = [
+            [InlineKeyboardButton("💼 Личный кабинет", callback_data="cabinet")],
+            [InlineKeyboardButton("⭐ Купить подписку", callback_data="buy_subscription")],
+            [InlineKeyboardButton("💬 Задать вопрос", callback_data="contact_owner")],
+        ]
+
+        await query.message.reply_text(
+            "Выберите, что вы хотели бы сделать 👇",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return True
 #
 # Отображение личного кабинета при нажатии на кнопку (если юзер подписан)
 #
@@ -230,6 +244,12 @@ async def user_button(
                             callback_data="contact_owner",
                         )
                     ],
+                    [
+                        InlineKeyboardButton(
+                            "⬅️ Назад",
+                            callback_data="user_back",
+                        )
+                    ],
                 ]
             )
 
@@ -257,6 +277,12 @@ async def user_button(
                             callback_data="contact_owner",
                         )
                     ],
+                    [
+                        InlineKeyboardButton(
+                            "⬅️ Назад",
+                            callback_data="user_back",
+                        )
+                    ],
                 ]
             )
 
@@ -274,7 +300,11 @@ async def user_button(
     if data == "cabinet_cancel":
 
         user_id = query.from_user.id
-
+        keyboard = [[InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="user_back",
+        )]]
+        
         try:
 
             tariff = get_user_tariff(user_id)
@@ -295,7 +325,8 @@ async def user_button(
 
                 await query.message.reply_text(
                     "✅ Вы остановили подписку\n\n"
-                    "Доступ останется до конца оплаченного периода."
+                    "Доступ останется до конца оплаченного периода.",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
                 )
 
                 return True
@@ -321,7 +352,8 @@ async def user_button(
 # Сообщение-подтверждение отмены тарифа
 #
                 await query.message.reply_text(
-                    "✅ Подписка остановлена.\n\n" "Доступ к материалам Клуба закрыт"
+                    "✅ Подписка остановлена.\n\n" "Доступ к материалам Клуба закрыт",
+                    reply_markup=InlineKeyboardMarkup(keyboard)
                 )
 
                 return True
@@ -331,7 +363,7 @@ async def user_button(
 #
 # Сообщение на случай ошибки отмены (в основном для тестировки)
 #
-            await query.message.reply_text(f"Ошибка отмены: {e}")
+            await query.message.reply_text(f"Ошибка отмены: {e}", reply_markup=InlineKeyboardMarkup(keyboard))
 
         return True
 
@@ -339,13 +371,16 @@ async def user_button(
 # Обработка нажатия на кнопку "Сообщение владельцу"
 #
     if data == "contact_owner":
-
+        keyboard = [[InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="user_back",
+        )]]
         context.user_data["chat_mode"] = True
 
 #
 # Сообщение после которого пользователь может написать владельцу 
 #
-        await query.message.reply_text("Задайте мне вопрос 👇")
+        await query.message.reply_text("Задайте мне вопрос 👇", reply_markup=InlineKeyboardMarkup(keyboard))
 
         return True
 
@@ -371,6 +406,10 @@ async def user_button(
                         callback_data="buy_recurring",
                     )
                 ],
+                [InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="user_back",
+                )],
             ]
         )
 
@@ -393,10 +432,13 @@ async def user_button(
 # Обработка покупки пробного доступа
 #
     if data == "buy_trial":
-
+        keyboard = [[InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="user_back",
+        )]]
         if has_used_trial(query.from_user.id):
 
-            await query.message.reply_text("❌ Вы уже использовали пробный период.")
+            await query.message.reply_text("❌ Вы уже использовали пробный период.", reply_markup=InlineKeyboardMarkup(keyboard))
 
             return True
 
@@ -421,7 +463,11 @@ async def user_button(
                             "🎁 Получить пробную подписку",
                             url=url,
                         )
-                    ]
+                    ],
+                    [InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="user_back",
+                    )]
                 ]
             ),
         )
@@ -452,7 +498,11 @@ async def user_button(
                             "🔄 Оформить подписку",
                             url=url,
                         )
-                    ]
+                    ],
+                    [InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="user_back",
+                    )]
                 ]
             ),
         )
@@ -489,6 +539,13 @@ async def user_message(
                 f"Пользователь: {user.first_name}\n"
                 f"ID: {user.id}\n\n"
                 f"{text}",
+                reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton(
+                            "↩️ Ответить пользователю",
+                            callback_data=f"open_{user.id}",
+                        )
+                    ]
+                ]),
             )
 
             sent = True
