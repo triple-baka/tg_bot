@@ -87,6 +87,87 @@ async def owner_button(
 
     data = query.data
 
+    await query.answer()
+
+    # Возврат в главное меню
+    if data == "owner_back":
+
+        keyboard = [
+            [InlineKeyboardButton("📨 Активные разговоры", callback_data="owner_conversations")],
+            [InlineKeyboardButton("📢 Сообщение всем пользователям", callback_data="owner_broadcast")],
+            [InlineKeyboardButton("📢 Рассылка по тегу", callback_data="owner_tag_broadcast")],
+            [InlineKeyboardButton("➕ Добавить пользователя в группу", callback_data="owner_add_user")],
+            [InlineKeyboardButton("➖ Убрать пользователя из группы", callback_data="owner_remove_user")],
+            [InlineKeyboardButton("📋 Все теги", callback_data="owner_all_tags")],
+            [InlineKeyboardButton("👥 Пользователи по тегу", callback_data="owner_users_by_tag")],
+        ]
+
+        await query.message.reply_text(
+            "Панель управления",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return True
+
+    # Возврат к списку разговоров
+    if data == "owner_back_conversations":
+
+        users = get_all_users()
+
+        keyboard = []
+
+        for user_id, username in users:
+            keyboard.append([
+                InlineKeyboardButton(
+                    "Написать пользователю\n" + f"{username} ({user_id})",
+                    callback_data=f"open_{user_id}",
+                )
+            ])
+
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back",
+            )
+        ])
+
+        await query.message.reply_text(
+            "Активные разговоры:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return True
+
+    # Возврат в меню конкретного пользователя
+    if data.startswith("owner_back_user_"):
+
+        user_id = int(data.replace("owner_back_user_", ""))
+
+        delete_on_expiration = get_delete_on_expiration(user_id)
+
+        delete_button_text = (
+            "🗑 Удалять при окончании: ВКЛ"
+            if delete_on_expiration
+            else "🗑 Удалять при окончании: ВЫКЛ"
+        )
+
+        keyboard = [
+            [InlineKeyboardButton("📋 Теги", callback_data=f"tag_list_{user_id}")],
+            [InlineKeyboardButton("🏷 Добавить тег", callback_data=f"tag_add_{user_id}")],
+            [InlineKeyboardButton("❌ Удалить тег", callback_data=f"tag_remove_{user_id}")],
+            [InlineKeyboardButton(delete_button_text, callback_data=f"toggle_delete_{user_id}")],
+            [InlineKeyboardButton("➕ Добавить в группу", callback_data=f"add_{user_id}")],
+            [InlineKeyboardButton("➖ Удалить из группы", callback_data=f"remove_{user_id}")],
+            [InlineKeyboardButton("⬅️ Назад", callback_data="owner_back_conversations")],
+        ]
+
+        await query.message.reply_text(
+            f"Пользователь: {user_id}",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+
+        return True
+
 #
 # Обработка нажатия на кнопку "Активные разговоры"
 #
@@ -112,7 +193,7 @@ async def owner_button(
 # в которых лежат ник польователя и айди, их лучше не трогать) 
 # при необходимости лучше редактировать там где "Написать пользователю"
 #
-                        "Написать пользователю \n"+
+                        "Пользователь "+
                         f"{username} ({user_id})",
                         callback_data=f"open_{user_id}",
                     )
@@ -132,7 +213,13 @@ async def owner_button(
                     )
                 ]
             )
-
+        buttons.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back",
+            )
+        ])
+        
 #
 # Сообщение меню разговоров с пользователями 
 #
@@ -144,52 +231,72 @@ async def owner_button(
         return True
 
     if data == "owner_add_user":
-
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back",
+            )
+        ]]
         context.user_data["manual_add_user"] = True
 
 #
 # Сообщение добавления пользователя вручную
 #
         await query.message.reply_text(
-            "Пришлите ID пользователя которого нужно добавить:"
+            "Пришлите ID пользователя которого нужно добавить:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
         return True
 
     if data == "owner_remove_user":
-
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back",
+            )
+        ]]
         context.user_data["manual_remove_user"] = True
 
 #
 # Сообщение удаления пользователя вручную
 #
         await query.message.reply_text(
-            "Пришлите ID пользователя которого нужно удалить:"
+            "Пришлите ID пользователя которого нужно удалить:",
+            reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
         return True
-
+    
     if data == "owner_broadcast":
-
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back",
+            )
+        ]]
         context.user_data["broadcast_mode"] = True
 
 #
 # Сообщение рассылки
 #
-        await query.message.reply_text("Напишите сообщение всем пользователям:")
+        await query.message.reply_text("Напишите сообщение всем пользователям:", reply_markup=InlineKeyboardMarkup(keyboard))
 
         return True
 
     if data == "owner_tag_broadcast":
-
+        
         tags = get_all_tags()
 
 #
 # Сообщение рассылки по тегу если тегов нет
 #
         if not tags:
-            await query.message.reply_text("❌ Тегов пока нет.")
-
+            await query.message.reply_text("❌ Тегов пока нет.", reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton(
+                    "⬅️ Назад",
+                    callback_data="owner_back",
+                )]]))
             return True
 
         keyboard = []
@@ -210,7 +317,13 @@ async def owner_button(
                     )
                 ]
             )
-
+            
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back",
+            )
+        ])
 #
 # Сообщение меню выбора тега
 #
@@ -278,6 +391,13 @@ async def owner_button(
                 )
             ],
         ]
+
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back_conversations",
+            )
+        ])
 
         await query.message.reply_text(
             f"Пользователь: {user_id}",
@@ -350,6 +470,13 @@ async def owner_button(
             ],
         ]
 
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data="owner_back_conversations",
+            )
+        ])
+
         await query.edit_message_reply_markup(
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -393,6 +520,13 @@ async def owner_button(
             ]
         )
 
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back_user_{user_id}",
+            )
+        ])
+
         await query.message.reply_text(
 #
 # Сообщение добавления тега
@@ -409,15 +543,22 @@ async def owner_button(
 
         tags = get_user_tags(user_id)
 
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back_user_{user_id}",
+            )
+        ]]
+
         await query.message.reply_text(
 #
 # Сообщение со списком тегов у пользователя если они есть
 #
-            "Теги:\n" + "\n".join(tags) if tags 
+            ("Теги:\n" + "\n".join(tags) if tags 
 #
 # Сообщение если у пользователя нету тегов
 #
-            else "Нет тегов"
+            else "Нет тегов"), reply_markup=InlineKeyboardMarkup(keyboard)
         )
 
         return True
@@ -456,6 +597,14 @@ async def owner_button(
 #
 # Сообщение меню удаления тегов
 #
+
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back_user_{user_id}",
+            )
+        ])
+        
         await query.message.reply_text(
             "Выберите тег для удаления:",
             reply_markup=InlineKeyboardMarkup(keyboard),
@@ -464,6 +613,14 @@ async def owner_button(
         return True
 
     if data.startswith("add_existing_tag|"):
+
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back_user_{user_id}",
+            )
+        ]]
+        
         parts = data.split("|")
 
         user_id = int(parts[1])
@@ -478,11 +635,19 @@ async def owner_button(
 #
 # Сообщение-подтверждение добавления существующего тега пользователю
 #
-        await query.message.reply_text(f"✅ Тег{tag} добавлен.")
+        await query.message.reply_text(f"✅ Тег{tag} добавлен.", reply_markup=InlineKeyboardMarkup(keyboard),)
 
         return True
 
     if data.startswith("new_tag|"):
+
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back_user_{user_id}",
+            )
+        ]]
+        
         user_id = int(
             data.split("|")[1]
         )
@@ -493,12 +658,19 @@ async def owner_button(
 # Сообщение создания нового тега
 #
         await query.message.reply_text(
-            "Введите название нового тега:"
+            "Введите название нового тега:", reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         return True
 
     if data.startswith("broadcast_tag_"):
+
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back",
+            )
+        ]]
 
         tag = data.replace("broadcast_tag_", "")
 
@@ -510,12 +682,20 @@ async def owner_button(
 # Сообщение рассылки по тегу
 #
         await query.message.reply_text(
-            f"Введите сообщение для пользователей с тегом {tag}:"
+            f"Введите сообщение для пользователей с тегом {tag}:", reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         return True
 
     if data.startswith("delete_tag|"):
+
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back",
+            )
+        ]]
+        
         parts = data.split("|")
 
         user_id = int(parts[1])
@@ -527,13 +707,20 @@ async def owner_button(
 # Сообщение-подтверждение удаления тега у пользователя
 #
         await query.message.reply_text(
-            f"✅ Тег {tag} удалён."
+            f"✅ Тег {tag} удалён.", reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         return True
 
     if data.startswith("add_"):
 
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back",
+            )
+        ]]
+        
         user_id = int(data.replace("add_", ""))
 
         try:
@@ -548,12 +735,12 @@ async def owner_button(
 #
 # Сообщение пользователю при добавлении его вручную
 #
-                "Ссылка для входа:\n\n" f"{invite.invite_link}",
+                "Ссылка для входа:\n\n" f"{invite.invite_link}", 
             )
 #
 # Сообщение админу при добавлении пользователя вручную
 #
-            await query.message.reply_text("✅ Ссылка отправлена.")
+            await query.message.reply_text("✅ Ссылка отправлена.", reply_markup=InlineKeyboardMarkup(keyboard),)
 
         except Exception as e:
 
@@ -561,12 +748,17 @@ async def owner_button(
 #
 # Сообщение админу на случай ошибки при добавлении пользователя вручную
 #
-            await query.message.reply_text(f"Ошибка:\n{e}")
+            await query.message.reply_text(f"Ошибка:\n{e}", reply_markup=InlineKeyboardMarkup(keyboard),)
 
         return True
 
     if data.startswith("remove_"):
-
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back",
+            )
+        ]]
         user_id = int(data.replace("remove_", ""))
 
         try:
@@ -585,18 +777,23 @@ async def owner_button(
 #
 # Сообщение админу при удалении пользователя вручную
 #
-            await query.message.reply_text("✅ Пользователь удалён из канала.")
+            await query.message.reply_text("✅ Пользователь удалён из канала.", reply_markup=InlineKeyboardMarkup(keyboard),)
 
         except Exception as e:
 #
 # Сообщение админу на случай ошибки при удалении пользователя вручную
 #
-            await query.message.reply_text(f"Ошибка:\n{e}")
+            await query.message.reply_text(f"Ошибка:\n{e}", reply_markup=InlineKeyboardMarkup(keyboard),)
 
         return True
 
     if data == "owner_all_tags":
-
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back",
+            )
+        ]]
         tags = get_all_tags()
 
         if not tags:
@@ -613,12 +810,12 @@ async def owner_button(
                 f"🏷 {tag} — {count} пользователей\n"
             )
 
-        await query.message.reply_text(message)
+        await query.message.reply_text(message, reply_markup=InlineKeyboardMarkup(keyboard),)
 
         return True
 
     if data == "owner_users_by_tag":
-
+        
         tags = get_all_tags()
 
         if not tags:
@@ -639,7 +836,14 @@ async def owner_button(
                     )
                 ]
             )
-
+            
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back",
+            )
+        ])
+        
         await query.message.reply_text(
             "Выберите тег, чтобы посмотреть пользователей:",
             reply_markup=InlineKeyboardMarkup(keyboard),
@@ -648,14 +852,19 @@ async def owner_button(
         return True
 
     if data.startswith("view_tag_users|"):
-
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back",
+            )
+        ]]
         tag = data.split("|", 1)[1]
 
         users = get_users_by_tag(tag)
 
         if not users:
             await query.message.reply_text(
-                f"❌ Пользователей с тегом {tag} нет."
+                f"❌ Пользователей с тегом {tag} нет.", reply_markup=InlineKeyboardMarkup(keyboard),
             )
             return True
 
@@ -676,7 +885,7 @@ async def owner_button(
                 f"🆔 {user_id}\n\n"
             )
 
-        await query.message.reply_text(message)
+        await query.message.reply_text(message, reply_markup=InlineKeyboardMarkup(keyboard),)
 
         return True
 
