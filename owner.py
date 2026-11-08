@@ -91,7 +91,16 @@ async def owner_button(
 
     # Возврат в главное меню
     if data == "owner_back":
+        selected_conversations.pop(query.from_user.id, None)
 
+        # Сброс режимов ввода
+        context.user_data.pop("manual_add_user", None)
+        context.user_data.pop("manual_remove_user", None)
+        context.user_data.pop("broadcast_mode", None)
+        context.user_data.pop("tag_broadcast_message", None)
+        context.user_data.pop("create_tag_user", None)
+        context.user_data.pop("broadcast_tag", None)
+        
         keyboard = [
             [InlineKeyboardButton("📨 Активные разговоры", callback_data="owner_conversations")],
             [InlineKeyboardButton("📢 Сообщение всем пользователям", callback_data="owner_broadcast")],
@@ -111,7 +120,15 @@ async def owner_button(
 
     # Возврат к списку разговоров
     if data == "owner_back_conversations":
+        selected_conversations.pop(query.from_user.id, None)
 
+        # Сброс режимов ввода
+        context.user_data.pop("manual_add_user", None)
+        context.user_data.pop("manual_remove_user", None)
+        context.user_data.pop("broadcast_mode", None)
+        context.user_data.pop("tag_broadcast_message", None)
+        context.user_data.pop("create_tag_user", None)
+        context.user_data.pop("broadcast_tag", None)
         users = get_all_users()
 
         keyboard = []
@@ -123,7 +140,7 @@ async def owner_button(
                     callback_data=f"open_{user_id}",
                 )
             ])
-
+        
         keyboard.append([
             InlineKeyboardButton(
                 "⬅️ Назад",
@@ -140,7 +157,16 @@ async def owner_button(
 
     # Возврат в меню конкретного пользователя
     if data.startswith("owner_back_user_"):
+        selected_conversations.pop(query.from_user.id, None)
 
+        # Сброс режимов ввода
+        context.user_data.pop("manual_add_user", None)
+        context.user_data.pop("manual_remove_user", None)
+        context.user_data.pop("broadcast_mode", None)
+        context.user_data.pop("tag_broadcast_message", None)
+        context.user_data.pop("create_tag_user", None)
+        context.user_data.pop("broadcast_tag", None)
+        
         user_id = int(data.replace("owner_back_user_", ""))
 
         delete_on_expiration = get_delete_on_expiration(user_id)
