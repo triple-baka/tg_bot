@@ -1023,6 +1023,11 @@ async def owner_message(
 # Сообщение пользователю от владельца (при рассылке по тегу)
 #
                     f"📢 Сообщение владельца:\n\n{text}",
+                    reply_markup=InlineKeyboardMarkup([[
+                        InlineKeyboardButton(
+                            "↩️ Ответить",
+                            callback_data="contact_owner",
+                        )]]),
                 )
 
                 count += 1
@@ -1057,6 +1062,14 @@ async def owner_message(
 # Сообщение пользователю от владельца (при рассылке всем)
 #
                     f"📢 Сообщение владельца:\n\n{text}",
+                    reply_markup=InlineKeyboardMarkup([
+                        [
+                            InlineKeyboardButton(
+                                "↩️ Ответить",
+                                callback_data="contact_owner",
+                            )
+                        ]
+                    ]),
                 )
 
                 count += 1
@@ -1089,6 +1102,14 @@ async def owner_message(
 # Сообщение пользователю от владельца (если админ пишет лично ему)
 #
             f"📢 Сообщение владельца:\n\n{text}",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "↩️ Ответить",
+                        callback_data="contact_owner",
+                    )
+                ]
+            ]),
         )
 
 #
