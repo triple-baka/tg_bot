@@ -189,7 +189,7 @@ async def user_button(
 
         # Возврат в главное меню
     if data == "user_back":
-
+        context.user_data["chat_mode"] = False
         keyboard = [
             [InlineKeyboardButton("💼 Личный кабинет", callback_data="cabinet")],
             [InlineKeyboardButton("⭐ Купить подписку", callback_data="buy_subscription")],
