@@ -14,6 +14,8 @@ from database import (
     get_subscription_info,
     get_user_tariff,
     has_used_trial,
+    add_user,
+    add_user_tag,
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -121,15 +123,23 @@ async def create_checkout(
 # Функция-обработчик когда юзер стартует бота
 #
 
-async def user_start(
-    update,
-    context,
-):
+async def user_start(update, context):
+
+    user = update.effective_user
+
+    # Сохраняем пользователя в базе
+    add_user(user)
+
+    # Добавляем тег, если пользователь ещё без подписки
+    info = get_subscription_info(user.id)
+
+    if not info or not info.get("is_subscribed"):
+        add_user_tag(user.id, "#без_подписки")
 
     print(
         f"User started bot: "
-        f"id={update.effective_user.id}, "
-        f"username={update.effective_user.username}"
+        f"id={user.id}, "
+        f"username={user.username}"
     )
 
 #
