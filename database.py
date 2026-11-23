@@ -162,7 +162,17 @@ def activate_subscription(
             ),
         )
 
-        # Remove previous tariff tags
+        # Удаляем тег пользователя без подписки
+        db.execute(
+            """
+            DELETE FROM user_tags
+            WHERE user_id = ?
+            AND tag = '#без_подписки'
+            """,
+            (user_id,),
+        )
+
+        # Удаляем предыдущие теги тарифов
         db.execute(
             """
             DELETE FROM user_tags
@@ -174,12 +184,10 @@ def activate_subscription(
                     '#trial'
                 )
             """,
-            (
-                user_id,
-            ),
+            (user_id,),
         )
 
-        # Add current tariff as a tag
+        # Добавляем тег нового тарифа
         db.execute(
             """
             INSERT OR IGNORE INTO user_tags
@@ -196,7 +204,6 @@ def activate_subscription(
         )
 
         db.commit()
-
 
 
 def update_subscription_end(
@@ -480,6 +487,16 @@ def deactivate_subscription(user_id):
                 Tariff.TRIAL.value.lower(),
                 Tariff.RECURRING.value.lower(),
             ),
+        )
+
+                # Добавляем тег пользователя без подписки
+        db.execute(
+            """
+            INSERT OR IGNORE INTO user_tags
+            (user_id, tag)
+            VALUES (?, ?)
+            """,
+            (user_id, "#без_подписки"),
         )
 
         db.commit()
