@@ -7,10 +7,14 @@ from database import (
     remove_user_tag,
     selected_conversations,
     get_all_tags,
+    get_all_tags_with_ids,
     get_user_tags,
     get_users_by_tag,
+    get_users_by_tag_id,
     get_delete_on_expiration,
     toggle_delete_on_expiration,
+    add_user_tag_by_id,
+    remove_user_tag_by_id,
 )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -308,54 +312,36 @@ async def owner_button(
         return True
 
     if data == "owner_tag_broadcast":
-        
-        tags = get_all_tags()
 
-#
-# Сообщение рассылки по тегу если тегов нет
-#
-        if not tags:
-            await query.message.reply_text("❌ Тегов пока нет.", reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton(
-                    "⬅️ Назад",
-                    callback_data="owner_back",
-                )]]))
-            return True
+    tags = get_all_tags_with_ids()
 
-        keyboard = []
+    if not tags:
+        await query.message.reply_text("❌ Тегов пока нет.")
+        return True
 
-#
-# Если теги есть то для каждого тега появляется кнопка
-#
-        for tag, count in tags:
-            keyboard.append(
-                [
-                    InlineKeyboardButton(
-#
-# Кнопка тега где tag - название тега
-#
-                        ''+
-                        f"🏷 {tag}",
-                        callback_data=f"broadcast_tag_{tag}",
-                    )
-                ]
-            )
-            
+    keyboard = []
+
+    for tag_id, tag, count in tags:
         keyboard.append([
             InlineKeyboardButton(
-                "⬅️ Назад",
-                callback_data="owner_back",
+                f"🏷 {tag}",
+                callback_data=f"broadcast_tag_{tag_id}",
             )
         ])
-#
-# Сообщение меню выбора тега
-#
-        await query.message.reply_text(
-            "Выберите тег для рассылки:",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
 
-        return True
+    keyboard.append([
+        InlineKeyboardButton(
+            "⬅️ Назад",
+            callback_data="owner_back",
+        )
+    ])
+
+    await query.message.reply_text(
+        "Выберите тег для рассылки:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+    return True
 
     if data.startswith("open_"):
 
@@ -690,27 +676,38 @@ async def owner_button(
 
     if data.startswith("broadcast_tag_"):
 
-        keyboard = [[
-            InlineKeyboardButton(
-                "⬅️ Назад",
-                callback_data=f"owner_back",
-            )
-        ]]
+    tag_id = int(data.replace("broadcast_tag_", ""))
 
-        tag = data.replace("broadcast_tag_", "")
+    tag = next(
+        (
+            name
+            for tid, name, count in get_all_tags_with_ids()
+            if tid == tag_id
+        ),
+        None,
+    )
 
-        context.user_data["broadcast_tag"] = tag
-
-        context.user_data["tag_broadcast_message"] = True
-
-#
-# Сообщение рассылки по тегу
-#
-        await query.message.reply_text(
-            f"Введите сообщение для пользователей с тегом {tag}:", reply_markup=InlineKeyboardMarkup(keyboard),
-        )
-
+    if tag is None:
+        await query.message.reply_text("❌ Тег не найден.")
         return True
+
+    context.user_data["broadcast_tag_id"] = tag_id
+    context.user_data["broadcast_tag"] = tag
+    context.user_data["tag_broadcast_message"] = True
+
+    keyboard = [[
+        InlineKeyboardButton(
+            "⬅️ Назад",
+            callback_data="owner_back",
+        )
+    ]]
+
+    await query.message.reply_text(
+        f"Введите сообщение для пользователей с тегом {tag}:",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+    return True
 
     if data.startswith("delete_tag|"):
 
@@ -1005,46 +1002,42 @@ async def owner_message(
 
         return
 
-    if context.user_data.get("tag_broadcast_message"):
+   if context.user_data.get("tag_broadcast_message"):
 
-        context.user_data["tag_broadcast_message"] = False
+    context.user_data["tag_broadcast_message"] = False
 
-        tag = context.user_data.pop("broadcast_tag")
+    tag_id = context.user_data.pop("broadcast_tag_id")
+    tag = context.user_data.pop("broadcast_tag")
 
-        users = get_users_by_tag(tag)
+    users = get_users_by_tag_id(tag_id)
 
-        count = 0
+    count = 0
 
-        for (user_id,) in users:
+    for user_id, username in users:
 
-            try:
+        try:
+            await context.bot.send_message(
+                user_id,
+                f"📢 Сообщение владельца:\n\n{text}",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton(
+                        "↩️ Ответить",
+                        callback_data="contact_owner",
+                    )
+                ]]),
+            )
 
-                await context.bot.send_message(
-                    user_id,
-#
-# Сообщение пользователю от владельца (при рассылке по тегу)
-#
-                    f"📢 Сообщение владельца:\n\n{text}",
-                    reply_markup=InlineKeyboardMarkup([[
-                        InlineKeyboardButton(
-                            "↩️ Ответить",
-                            callback_data="contact_owner",
-                        )]]),
-                )
+            count += 1
 
-                count += 1
+        except Exception:
+            pass
 
-            except Exception:
-                pass
+    await update.message.reply_text(
+        f"✅ Рассылка по тегу {tag} завершена.\n"
+        f"Отправлено: {count} пользователям"
+    )
 
-        await update.message.reply_text(
-#
-# Сообщение-подтверждение успешной рассылки по тегу
-#
-            f"✅ Рассылка по тегу #{tag} завершена.\nОтправлено: {count} пользователям"
-        )
-
-        return
+    return
 
     if context.user_data.get("broadcast_mode"):
 
