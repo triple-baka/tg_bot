@@ -637,17 +637,9 @@ async def owner_button(
 
     if data.startswith("add_existing_tag|"):
 
-        keyboard = [[
-            InlineKeyboardButton(
-                "⬅️ Назад",
-                callback_data=f"owner_back_user_{user_id}",
-            )
-        ]]
-        
-        parts = data.split("|")
+        parts = data.split("|", 2)
 
         user_id = int(parts[1])
-
         tag = parts[2]
 
         add_user_tag(
@@ -655,14 +647,29 @@ async def owner_button(
             tag,
         )
 
+        keyboard = [[
+            InlineKeyboardButton(
+                "⬅️ Назад",
+                callback_data=f"owner_back_user_{user_id}",
+            )
+        ]]
+
 #
 # Сообщение-подтверждение добавления существующего тега пользователю
 #
-        await query.message.reply_text(f"✅ Тег{tag} добавлен.", reply_markup=InlineKeyboardMarkup(keyboard),)
+        await query.message.reply_text(
+            f"✅ Тег #{tag} добавлен пользователю {user_id}.",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
 
         return True
 
+    
     if data.startswith("new_tag|"):
+
+        user_id = int(data.split("|", 1)[1])
+
+        context.user_data["create_tag_user"] = user_id
 
         keyboard = [[
             InlineKeyboardButton(
@@ -670,18 +677,13 @@ async def owner_button(
                 callback_data=f"owner_back_user_{user_id}",
             )
         ]]
-        
-        user_id = int(
-            data.split("|")[1]
-        )
-
-        context.user_data["create_tag_user"] = user_id
 
 #
 # Сообщение создания нового тега
 #
         await query.message.reply_text(
-            "Введите название нового тега:", reply_markup=InlineKeyboardMarkup(keyboard),
+            "Введите название нового тега:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
         return True
@@ -926,7 +928,7 @@ async def owner_message(
 
     text = update.message.text
 
-    if context.user_data.get("create_tag_user"):
+    if context.user_data.get("create_tag_user") is not None:
         user_id = context.user_data.pop("create_tag_user")
 
         tag = text.lower().strip()
