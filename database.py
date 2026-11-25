@@ -15,7 +15,7 @@ def get_db():
         DATABASE,
         check_same_thread=False,
     )
-
+    conn.execute("PRAGMA foreign_keys = ON")
     conn.row_factory = sqlite3.Row
 
     try:
@@ -25,12 +25,12 @@ def get_db():
 
 
 
+
 def init_db():
 
     with get_db() as db:
 
-        db.execute(
-            """
+        db.execute("""
             CREATE TABLE IF NOT EXISTS users(
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
@@ -42,32 +42,117 @@ def init_db():
                 delete_on_expiration BOOLEAN DEFAULT TRUE,
                 subscription_id TEXT DEFAULT NULL
             )
-            """
-        )
-
-
-        db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS user_tags(
-                user_id INTEGER,
-                tag TEXT,
-                UNIQUE(user_id, tag)
-            )
-            """
-        )
-
-
-        db.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_user_tags_tag
-            ON user_tags(tag)
-            """
-        )
-
+        """)
 
         db.commit()
 
+    migrate_tags()
 
+
+def migrate_tags():
+
+    with get_db() as db:
+
+        try:
+            db.execute("BEGIN IMMEDIATE")
+
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE
+                )
+            """)
+
+            columns = {
+                row["name"]
+                for row in db.execute(
+                    "PRAGMA table_info(user_tags)"
+                ).fetchall()
+            }
+
+            # Старая таблица отсутствует
+            if not columns:
+
+                db.execute("""
+                    CREATE TABLE user_tags (
+                        user_id INTEGER NOT NULL,
+                        tag_id INTEGER NOT NULL,
+
+                        UNIQUE(user_id, tag_id),
+
+                        FOREIGN KEY(user_id)
+                            REFERENCES users(user_id)
+                            ON DELETE CASCADE,
+
+                        FOREIGN KEY(tag_id)
+                            REFERENCES tags(id)
+                            ON DELETE CASCADE
+                    )
+                """)
+
+            # Старая структура user_id + tag
+            elif "tag" in columns:
+
+                db.execute("""
+                    ALTER TABLE user_tags
+                    RENAME TO user_tags_legacy
+                """)
+
+                db.execute("""
+                    INSERT OR IGNORE INTO tags (name)
+                    SELECT DISTINCT tag
+                    FROM user_tags_legacy
+                    WHERE tag IS NOT NULL
+                """)
+
+                db.execute("""
+                    CREATE TABLE user_tags (
+                        user_id INTEGER NOT NULL,
+                        tag_id INTEGER NOT NULL,
+
+                        UNIQUE(user_id, tag_id),
+
+                        FOREIGN KEY(user_id)
+                            REFERENCES users(user_id)
+                            ON DELETE CASCADE,
+
+                        FOREIGN KEY(tag_id)
+                            REFERENCES tags(id)
+                            ON DELETE CASCADE
+                    )
+                """)
+
+                db.execute("""
+                    INSERT OR IGNORE INTO user_tags
+                        (user_id, tag_id)
+                    SELECT
+                        old.user_id,
+                        tags.id
+                    FROM user_tags_legacy old
+                    INNER JOIN tags
+                        ON tags.name = old.tag
+                """)
+
+                db.execute("""
+                    DROP TABLE user_tags_legacy
+                """)
+
+            # Проверяем новую структуру
+            elif not {"user_id", "tag_id"}.issubset(columns):
+                raise RuntimeError(
+                    f"Неизвестная структура user_tags: {columns}"
+                )
+
+            db.execute("""
+                CREATE INDEX IF NOT EXISTS idx_user_tags_tag_id
+                ON user_tags(tag_id)
+            """)
+
+            db.commit()
+
+        except Exception:
+            db.rollback()
+            raise
 
 def add_user(user):
 
@@ -125,14 +210,6 @@ def get_all_users():
             for row in rows
         ]
 
-def normalize_tag(tag):
-    tag = tag.strip().lower().replace(" ", "_")
-
-    if not tag.startswith("#"):
-        tag = f"#{tag}"
-
-    return tag
-
 def activate_subscription(
     user_id,
     until,
@@ -162,46 +239,47 @@ def activate_subscription(
             ),
         )
 
-        # Удаляем тег пользователя без подписки
-        db.execute(
-            """
+
+        # Удаляем тег без подписки
+        db.execute("""
             DELETE FROM user_tags
             WHERE user_id = ?
-            AND tag = '#без_подписки'
-            """,
-            (user_id,),
-        )
+            AND tag_id IN (
+                SELECT id FROM tags
+                WHERE name = '#без_подписки'
+            )
+        """, (user_id,))
 
-        # Удаляем предыдущие теги тарифов
-        db.execute(
-            """
+        # Удаляем старые теги тарифов
+        db.execute("""
             DELETE FROM user_tags
-            WHERE
-                user_id = ?
-                AND tag IN (
+            WHERE user_id = ?
+            AND tag_id IN (
+                SELECT id FROM tags
+                WHERE name IN (
                     '#recurring',
                     '#one_time',
                     '#trial'
                 )
-            """,
-            (user_id,),
-        )
-
-        # Добавляем тег нового тарифа
-        db.execute(
-            """
-            INSERT OR IGNORE INTO user_tags
-            (
-                user_id,
-                tag
             )
-            VALUES (?, ?)
-            """,
-            (
-                user_id,
-                normalize_tag(tariff),
-            ),
-        )
+        """, (user_id,))
+
+        # Создаём тег нового тарифа
+        tag = normalize_tag(tariff)
+
+        db.execute("""
+            INSERT OR IGNORE INTO tags (name)
+            VALUES (?)
+        """, (tag,))
+
+        # Привязываем тег к пользователю
+        db.execute("""
+            INSERT OR IGNORE INTO user_tags
+                (user_id, tag_id)
+            SELECT ?, id
+            FROM tags
+            WHERE name = ?
+        """, (user_id, tag))
 
         db.commit()
 
@@ -474,33 +552,36 @@ def deactivate_subscription(user_id):
             ),
         )
 
-        # Remove subscription tariff tags
-        db.execute(
-            """
+        
+        # Удаляем теги тарифов
+        db.execute("""
             DELETE FROM user_tags
-            WHERE
-                user_id = ?
-                AND tag IN (?, ?)
-            """,
-            (
-                user_id,
-                Tariff.TRIAL.value.lower(),
-                Tariff.RECURRING.value.lower(),
-            ),
-        )
+            WHERE user_id = ?
+            AND tag_id IN (
+                SELECT id FROM tags
+                WHERE name IN (
+                    '#trial',
+                    '#recurring',
+                    '#one_time'
+                )
+            )
+        """, (user_id,))
 
-                # Добавляем тег пользователя без подписки
-        db.execute(
-            """
+        # Создаём тег без подписки
+        db.execute("""
+            INSERT OR IGNORE INTO tags (name)
+            VALUES ('#без_подписки')
+        """)
+
+        db.execute("""
             INSERT OR IGNORE INTO user_tags
-            (user_id, tag)
-            VALUES (?, ?)
-            """,
-            (user_id, "#без_подписки"),
-        )
+                (user_id, tag_id)
+            SELECT ?, id
+            FROM tags
+            WHERE name = '#без_подписки'
+        """, (user_id,))
 
         db.commit()
-
 
 def has_used_trial(user_id):
 
@@ -545,6 +626,16 @@ def mark_trial_used(user_id):
 
 
 
+
+def normalize_tag(tag):
+    tag = tag.strip().lower().replace(" ", "_")
+
+    if not tag.startswith("#"):
+        tag = f"#{tag}"
+
+    return tag
+
+
 def add_user_tag(user_id, tag):
 
     tag = normalize_tag(tag)
@@ -553,44 +644,86 @@ def add_user_tag(user_id, tag):
 
         db.execute(
             """
+            INSERT OR IGNORE INTO tags (name)
+            VALUES (?)
+            """,
+            (tag,),
+        )
+
+        row = db.execute(
+            """
+            SELECT id
+            FROM tags
+            WHERE name = ?
+            """,
+            (tag,),
+        ).fetchone()
+
+        db.execute(
+            """
             INSERT OR IGNORE INTO user_tags
-            (
-                user_id,
-                tag
-            )
+                (user_id, tag_id)
             VALUES (?, ?)
             """,
-            (
-                user_id,
-                tag,
-            ),
+            (user_id, row["id"]),
         )
 
         db.commit()
 
 
+def add_user_tag_by_id(user_id, tag_id):
+
+    with get_db() as db:
+
+        db.execute(
+            """
+            INSERT OR IGNORE INTO user_tags
+                (user_id, tag_id)
+            SELECT ?, id
+            FROM tags
+            WHERE id = ?
+            """,
+            (user_id, tag_id),
+        )
+
+        db.commit()
 
 
 def remove_user_tag(user_id, tag):
 
     tag = normalize_tag(tag)
-    
+
     with get_db() as db:
 
         db.execute(
             """
             DELETE FROM user_tags
             WHERE user_id = ?
-            AND tag = ?
+            AND tag_id = (
+                SELECT id FROM tags
+                WHERE name = ?
+            )
             """,
-            (
-                user_id,
-                tag.lower(),
-            ),
+            (user_id, tag),
         )
 
         db.commit()
 
+
+def remove_user_tag_by_id(user_id, tag_id):
+
+    with get_db() as db:
+
+        db.execute(
+            """
+            DELETE FROM user_tags
+            WHERE user_id = ?
+            AND tag_id = ?
+            """,
+            (user_id, tag_id),
+        )
+
+        db.commit()
 
 
 def get_user_tags(user_id):
@@ -599,48 +732,18 @@ def get_user_tags(user_id):
 
         rows = db.execute(
             """
-            SELECT tag
-            FROM user_tags
-            WHERE user_id = ?
+            SELECT tags.name
+            FROM tags
+            INNER JOIN user_tags
+                ON tags.id = user_tags.tag_id
+            WHERE user_tags.user_id = ?
+            ORDER BY tags.name
             """,
-            (
-                user_id,
-            ),
+            (user_id,),
         ).fetchall()
 
+        return [row["name"] for row in rows]
 
-        return [
-            row["tag"]
-            for row in rows
-        ]
-
-def get_users_by_tag(tag):
-
-    tag = normalize_tag(tag)
-
-    with get_db() as db:
-
-        users = db.execute(
-            """
-            SELECT
-                u.user_id,
-                u.username
-            FROM users u
-            INNER JOIN user_tags t
-                ON u.user_id = t.user_id
-            WHERE t.tag = ?
-            ORDER BY u.started_at DESC
-            """,
-            (tag,),
-        ).fetchall()
-
-        return [
-            (
-                row["user_id"],
-                row["username"],
-            )
-            for row in users
-        ]
 
 def get_all_tags():
 
@@ -649,21 +752,115 @@ def get_all_tags():
         rows = db.execute(
             """
             SELECT
-                tag,
-                COUNT(DISTINCT user_id) AS user_count
-            FROM user_tags
-            GROUP BY tag
-            ORDER BY tag
+                tags.name,
+                COUNT(user_tags.user_id) AS user_count
+            FROM tags
+            LEFT JOIN user_tags
+                ON tags.id = user_tags.tag_id
+            GROUP BY tags.id
+            ORDER BY tags.name
+            """
+        ).fetchall()
+
+        return [
+            (row["name"], row["user_count"])
+            for row in rows
+        ]
+
+
+def get_all_tags_with_ids():
+
+    with get_db() as db:
+
+        rows = db.execute(
+            """
+            SELECT
+                tags.id,
+                tags.name,
+                COUNT(user_tags.user_id) AS user_count
+            FROM tags
+            LEFT JOIN user_tags
+                ON tags.id = user_tags.tag_id
+            GROUP BY tags.id
+            ORDER BY tags.name
             """
         ).fetchall()
 
         return [
             (
-                row["tag"],
+                row["id"],
+                row["name"],
                 row["user_count"],
             )
             for row in rows
         ]
+
+
+def get_tag_by_id(tag_id):
+
+    with get_db() as db:
+
+        row = db.execute(
+            """
+            SELECT name
+            FROM tags
+            WHERE id = ?
+            """,
+            (tag_id,),
+        ).fetchone()
+
+        return row["name"] if row else None
+
+
+def get_users_by_tag(tag):
+
+    with get_db() as db:
+
+        rows = db.execute(
+            """
+            SELECT
+                users.user_id,
+                users.username
+            FROM users
+            INNER JOIN user_tags
+                ON users.user_id = user_tags.user_id
+            INNER JOIN tags
+                ON tags.id = user_tags.tag_id
+            WHERE tags.name = ?
+            ORDER BY users.started_at DESC
+            """,
+            (normalize_tag(tag),),
+        ).fetchall()
+
+        return [
+            (row["user_id"], row["username"])
+            for row in rows
+        ]
+
+
+def get_users_by_tag_id(tag_id):
+
+    with get_db() as db:
+
+        rows = db.execute(
+            """
+            SELECT
+                users.user_id,
+                users.username
+            FROM users
+            INNER JOIN user_tags
+                ON users.user_id = user_tags.user_id
+            WHERE user_tags.tag_id = ?
+            ORDER BY users.started_at DESC
+            """,
+            (tag_id,),
+        ).fetchall()
+
+        return [
+            (row["user_id"], row["username"])
+            for row in rows
+        ]
+
 
 def get_delete_on_expiration(user_id):
     """
